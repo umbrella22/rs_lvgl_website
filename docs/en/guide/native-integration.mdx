@@ -1,0 +1,305 @@
+---
+title: Connect a device
+description: Connect display, input and timing to an embedded Rust app, configure lv_conf.h and custom C sources, and manage native display lifetime.
+---
+
+import { ArchifyDiagram } from '../../../components/ArchifyDiagram';
+import { GuideLinks } from '../../../components/GuideLinks';
+
+# Connect a device
+
+Device integration has two parts: selecting the LVGL configuration at build time, and supplying display, input and timing at runtime. `rs_lvgl` provides the Rust APIs; platform code handles panel transfers, touch sampling and task scheduling. Start with the default configuration, then add device-specific fonts and C sources.
+
+`rs_lvgl_sys` builds the included LVGL 9.6 source using a C compiler and libclang. It does not link LVGL from a platform SDK. SDL2 is needed only for the desktop backend; Lottie also needs a C++14 compiler and runtime.
+
+## Register display, input and timing
+
+The application handles the runtime loop. `rs_lvgl_ui` never registers a display,
+input device, timer or RTOS task. LVGL initialization is automatic through the
+`ctor` hook by default; builds using `no-autoinit` must call
+`rs_lvgl::init()` before any other LVGL call.
+
+### Register a display
+
+The safe display constructor renders RGB888 and allocates a refresh buffer. This fragment shows the callback; the application supplies the panel transfer:
+
+```rust
+let display = rs_lvgl::Display::register::<_, { 320 * 240 }>(320, 240, |refresh| {
+    // Send refresh.area and the active colors to the panel.
+})?;
+```
+
+`N` is the number of RGB888 colors in the buffer. It must cover at least one
+aligned row of the display; a full-frame buffer is also valid. The callback runs
+on the UI thread, receives only the valid `(x2 - x1 + 1) * (y2 - y1 + 1)`
+entries, and the trampoline calls `lv_display_flush_ready` after it returns.
+
+`Display::register_raw` follows the configured color format instead. Its `N`
+entries are `lv_color_t` values, not necessarily RGB888 pixels, and the flush
+callback must honor the real area, stride and format and call
+`lv_display_flush_ready` when the transfer completes.
+
+### Supply time and drive the loop
+
+Tick and timer dispatch are separate:
+
+- Call `rs_lvgl::tick_inc` with the `Duration` elapsed since the previous call,
+  read from a monotonic clock. A periodic source with a known interval passes
+  that interval; a variable-rate loop passes each measured duration, so uneven
+  frame times do not lose time. The function forwards whole milliseconds to
+  `lv_tick_inc`, discarding the remainder.
+- Alternatively enable `rust_timer` and call `rs_lvgl::timer::update_clock`
+  with an `LvClock` whose `since_init()` returns monotonic elapsed time. It
+  installs `lv_tick_set_cb` on every update, so it survives deinitialization and
+  a new initialization cycle. While that callback is installed, `lv_tick_get`
+  reads it instead of the value accumulated by `tick_inc`; use one source.
+- Call `rs_lvgl::task_handler()` or `Ui::timer_handler()` to run LVGL timers,
+  then call `Ui::drain` to apply queued messages. Pass the same elapsed
+  milliseconds to `Ui::tick` so lifecycle custom widgets advance;
+  `lv_timer_handler` does not call their `update` hook.
+
+### Connect touch, keys or an encoder
+
+Input devices enter through `rs_lvgl::input_device`. With the `InputDriver`
+trait in scope, `Pointer::register`, `Encoder::register` and `Keypad::register`
+bind the device to a display;
+`rs_lvgl_ui` binds a keypad or activates focus explicitly. Native callbacks
+only enqueue messages; application state changes happen in `Ui::drain`.
+
+One thread has exclusive access to LVGL. Do not call `Ui` methods from C
+callbacks or from another thread. A reentrant `timer_handler` returns `0`, and
+other reentrant `Ui` calls report `UiError::Reentrant`.
+
+For the declarative layer, continue with [Mount and update](./ui-runtime.mdx) to create a `Ui` and connect your `App`.
+
+## Display lifetime and teardown
+
+Dropping a `Display` handle does not delete the native display, and it is not a
+teardown step. `Display` does not implement `Drop`, so dropping it only discards
+the Rust-side handle. The registered buffer, flush callback and native display stay
+alive, aliases and widgets created on its screen remain valid, and the callback
+and its captured data are released when the native display is deleted,
+including through `rs_lvgl::deinit`.
+
+Native deletion and deinitialization are separate unsafe operations.
+`Display::delete(self)` deletes the display while other aliases may still
+exist; `rs_lvgl::deinit` tears down LVGL globally. Their `# Safety` conditions,
+not a call order, define when they are valid: stop rendering, asynchronous draw
+workers, GPU or DMA work and pending flushes; ensure no render, flush, event or
+input callback is in progress; and ensure no screen, widget, animation, input
+device or other display alias can access the objects afterwards. For a mounted
+typed UI, call `Ui::unmount()` to remove its tree and input bindings, then
+destroy the input-device handles, before deleting the native display or calling
+`deinit`. If the native display does not need to be removed before shutdown,
+dropping the Rust handle is sufficient for the Rust side; do not call deletion to
+clean up while an alias remains.
+
+## Choose the LVGL configuration
+
+Without application inputs, the build reads
+[`vendor/include-9.6/lv_conf.h`](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_sys/vendor/include-9.6/lv_conf.h)
+and writes a patched copy under `OUT_DIR/conf` when Cargo features change the
+selection. The checked-in header is never rewritten. The default header uses the
+CLIB allocator, leaves SDL and logging off, and enables the core widget set with
+Montserrat 12, 14, 16, 28 and 48. Optional media and input extensions (QR code,
+barcode, GIF, Lottie, Pinyin, grid navigation) remain off.
+
+Cargo feature selection changes which capabilities the default header enables;
+[Choose widgets and fonts](./features.mdx) describes those sets. Build failures are
+diagnosed in [troubleshooting](./troubleshooting.mdx).
+
+Setting `LVGL_CONFIG_PATH` makes the application header authoritative: it is
+included in place and compiled as the LVGL configuration. Cargo widget and font features no
+longer patch it. Every explicitly requested capability must already be enabled
+in the effective macros, otherwise the build stops with a configuration
+conflict. `minimal-config` has no effect on an application header.
+
+Application headers are tracked together with their quoted includes. Changing a
+numeric expression, an included settings file or an `#undef`/`#define` pair
+triggers a rebuild; bindgen evaluates the final integer value and does not
+approximate the text.
+
+## Add application configuration and sources
+
+| Input | Contract |
+| --- | --- |
+| `LVGL_CONFIG_PATH` | Absolute, existing UTF-8 file. Any filename is accepted. It is included and compiled as the LVGL configuration; quoted includes resolve relative to the original header. |
+| `LVGL_EXTRA_C_DIR` | Absolute, existing directory. Every `.c` file below it is compiled recursively, and the directory and its private headers are watched. C++ files are not compiled. |
+| `LVGL_EXTRA_HEADERS` | Absolute, existing header files separated by the platform path separator. Their declarations are added to bindgen, including names outside the `lv_*` prefix. |
+| `LVGL_CFLAGS` | Comma-separated `NAME=VALUE` preprocessor definitions applied to the C and C++ compilation and to bindgen. Empty entries are ignored. This is a define list, not a path or a general compiler-option string. |
+| `LVGL_SYSROOT` | Target sysroot for bindgen. The build appends `<value>/include` to the bindgen clang arguments; an empty value is ignored. The value is not validated or passed to the C or C++ compilers, which still need their own sysroot configuration. |
+
+The absolute and existing-path validation applies only to `LVGL_CONFIG_PATH`,
+`LVGL_EXTRA_C_DIR` and `LVGL_EXTRA_HEADERS`. The build canonicalizes each value
+and checks that the canonical path can be written into a C include directive.
+Relative values are rejected with a message that points to Cargo's `relative`
+setting. `LVGL_CFLAGS` and `LVGL_SYSROOT` are not path-validated. Put portable
+relative paths for the three validated inputs in a workspace
+`.cargo/config.toml`; Cargo resolves them from the directory that contains
+`.cargo`.
+
+```text
+application/
+  .cargo/config.toml
+  Cargo.toml
+  native/
+    lv_conf.h
+    board.h
+    application.h
+    application.c
+    fonts/application_font.c
+```
+
+```toml
+# .cargo/config.toml
+[env]
+LVGL_CONFIG_PATH = { value = "native/lv_conf.h", relative = true }
+LVGL_EXTRA_C_DIR = { value = "native", relative = true }
+LVGL_EXTRA_HEADERS = { value = "native/application.h", relative = true }
+```
+
+Environment values already present in the process take precedence over
+`[env]` entries unless Cargo is configured with `force = true`. A stale shell
+variable therefore can select a different header than the repository file.
+
+## A portable configuration
+
+Start the application header from the pinned LVGL 9.6 configuration, then change
+the settings the board requires. Keep machine-specific values in an included
+file so the same header works across build machines.
+
+```c
+/* native/board.h */
+#define BOARD_DPI 173
+#define BOARD_USE_SLIDER 1
+```
+
+```c
+/* native/lv_conf.h */
+#include "board.h"
+
+#undef LV_DPI_DEF
+#define LV_DPI_DEF (BOARD_DPI + 0)
+
+#undef LV_USE_SLIDER
+#define LV_USE_SLIDER (BOARD_USE_SLIDER && 1)
+```
+
+The expressions are evaluated by the target preprocessor. Both the C
+compilation and the generated Rust constants observe the final values, so a
+conditional definition is valid as long as the value is an integer constant.
+
+An explicitly enabled widget must satisfy its native dependencies in the same
+header. The default feature path closes these dependencies automatically; an
+application header does not. For example, `widget-slider` requires
+`LV_USE_SLIDER` and `LV_USE_BAR`, `widget-keyboard` requires
+`LV_USE_KEYBOARD`, `LV_USE_BUTTONMATRIX` and `LV_USE_TEXTAREA`, and Lottie
+requires `LV_USE_THORVG_INTERNAL` together with vector, matrix and float
+support. SDL must agree in both directions: the header enables `LV_USE_SDL` and
+Cargo enables `sdl`.
+
+Typed `rs_lvgl_ui` applications must retain the core object, label and button
+classes, Montserrat 14, and every selected UI capability in their header. A raw
+header that removes these is not a supported UI configuration.
+
+## Custom C sources and fonts
+
+Declarations reach Rust through `LVGL_EXTRA_HEADERS`; implementations and
+generated font sources are compiled from `LVGL_EXTRA_C_DIR`.
+
+```c
+/* native/application.h */
+#include "lvgl.h"
+
+int application_value(void);
+extern const lv_font_t application_font;
+```
+
+```c
+/* native/application.c */
+#include "application.h"
+
+int application_value(void) { return 7; }
+```
+
+```rust
+// SAFETY: the C function has no pointer arguments and is called on the UI thread.
+let value = unsafe { rs_lvgl_sys::application_value() };
+
+// SAFETY: the descriptor is fully initialized, immutable, and lives for the program.
+let font = unsafe {
+    rs_lvgl_ui::Font::from_raw(core::ptr::addr_of!(rs_lvgl_sys::application_font))
+};
+```
+
+`Font::from_raw` is an unchecked adapter. LVGL retains the descriptor pointer in
+styles, so the descriptor, its glyph tables and its callbacks must stay valid
+for every object that uses the font. A generated LVGL font `.c` file already
+contains the required static tables; an empty or partially initialized
+`lv_font_t` links but does not render text. Application C++ sources need their
+separate build integration because the extra-source directory compiles `.c` only.
+
+## How C and Rust build together
+
+The effective configuration feeds both C compilation and binding generation. The generated Rust wrappers must describe the same native library that the application links.
+
+<ArchifyDiagram id="build-path" />
+
+The concrete files and Cargo metadata follow this path:
+
+```text
+application lv_conf.h (optional) or vendored lv_conf.h
+  + vendored LVGL C and shims
+  + application C sources and fonts (optional)
+  -> rs_lvgl_sys build script -> native library + OUT_DIR/bindings.rs
+  -> DEP_LVGL_WIDGETS / FONTS / OPTIONAL_WIDGETS / BINDINGS
+  -> rs_lvgl build script -> generated widget wrappers
+  -> rs_lvgl handwritten API -> rs_lvgl_ui or the application
+```
+
+The native toolchain needs a C compiler and libclang. SDL2 is additional and is
+required only by the `sdl` feature; the Lottie extension additionally needs a
+C++14 compiler and runtime.
+
+`rs_lvgl_sys` is both a normal and a build dependency of `rs_lvgl`. The wrapper
+generator reads `DEP_LVGL_BINDINGS`, `DEP_LVGL_WIDGETS` and
+`DEP_LVGL_OPTIONAL_WIDGETS` from the normal dependency that is actually linked;
+if `DEP_LVGL_BINDINGS` is absent it falls back to
+`rs_lvgl_sys::_bindgen_raw_src()` from the build-dependency copy. It does not
+scan another target directory for a host build artifact.
+
+## Single provider
+
+The build always compiles the vendored provider. It does not discover, link or
+fall back to an external prebuilt LVGL, including one shipped with an SDK. A
+matching version string or a matching header does not establish binary ABI
+compatibility, and the feature graph changes native layouts and types (Lottie,
+for example, selects floating-point coordinates and vector support for the whole
+linked graph). External provider integration needs a separate design with a
+defined ABI and configuration, verified on the target.
+
+## Rebuild behavior and verification
+
+The build script watches the vendored configuration, vendored sources and
+shims, the application config, the extra C directory (including added and
+removed files), the extra headers, and the relevant environment variables. It
+does not watch the generated header under `OUT_DIR`. Configuration
+switches and separate `CARGO_TARGET_DIR` values are expected to rebuild
+independently.
+
+Useful checks from the repository root:
+
+```sh
+cargo build
+cargo test -p rs_lvgl_sys --test build_script -- --test-threads=1
+python3 scripts/check-native-inputs.py --artifacts target/native-input-audit
+```
+
+The build-script tests exercise the real patch and validation helpers. The native
+input runner builds raw and typed consumers, mutates included and private
+headers, checks configuration switching, interrupted compilation recovery and an
+unpacked crate. These are host checks only. They do not verify another target's
+ABI, a board display, a hardware tick source, pending DMA teardown or an external
+provider.
+
+<GuideLinks items={["features", "runtime"]} />

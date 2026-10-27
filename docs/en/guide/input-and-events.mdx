@@ -1,0 +1,156 @@
+---
+title: Handle input
+description: Send messages from switches and buttons, store state in App::update and refresh the view, then connect keyboard focus and encoders.
+---
+
+import { AppExample } from '../../../components/AppExample';
+import { ArchifyDiagram } from '../../../components/ArchifyDiagram';
+import { NativeExample } from '../../../components/NativeExample';
+import { GuideLinks } from '../../../components/GuideLinks';
+
+# Handle input
+
+When a switch changes, its status label should change too. Convert the input into a message, store the new value in `App::update`, and read it back in `view`.
+
+## Try the notification switch
+
+Click the switch: `Disabled` becomes `Enabled`, and the count increases. Select `Reset` to restore both values. The complete application is on the left.
+
+<AppExample id="switch" />
+
+This example works immediately. Replace `Notifications` with your own title and select **Run** to see the edited screen. Each successful run starts from the state returned by `app()`.
+
+## Store the input in application state
+
+The switch interaction has three steps:
+
+1. `switch(self.enabled)` describes the current value. `on_value_changed` converts the native `1` or `0` into `Message::Enabled(value != 0)`.
+2. `update` receives the message, stores `enabled` and increments `changes`.
+3. `view` reads both fields again to update the switch, label and count.
+
+A button needs no value payload: `button("Reset").on_click(Message::Reset)` sends the reset message directly. Messages implement `Clone + 'static` because a click handler stores its message and clones it for each click.
+
+<ArchifyDiagram id="message-flow" />
+
+The native callback copies input data, runs the handler and queues the message. `Ui::drain` in the platform loop then calls `update` and `view`. Browser previews provide that loop; see [Mount and update](./ui-runtime.mdx) for device setup. `app`, `view` and `update` must return promptly, without starting another run loop.
+
+<details>
+<summary>What happens if I only set the initial value?</summary>
+
+<NativeExample id="controls" />
+
+These controls accept clicks and drags, but `update` does not store any state. Changing their native appearance does not update the adjacent labels. To connect them, store the message value as in the switch example, then pass it back to `slider(...)`, `switch(...)` or a label.
+
+</details>
+
+## Process messages in the loop
+
+`Ui` owns one bounded queue shared by the view, the overlay and every handler slot. `Ui::new` uses `DEFAULT_QUEUE_CAPACITY` (64) and `Ui::with_capacity` sets another size. When the queue is full, `post` removes the oldest message and increments the dropped count.
+
+`Ui::post(message)` adds a message from platform code. Native callbacks use the same queue internally. Neither path calls `App::update`; that happens only when the application drains:
+
+```rust
+ui.timer_handler(); // dispatch native timers and input callbacks
+let stats = ui.drain(&mut app, 32)?;
+```
+
+The snippet is a frame-loop fragment; the [input example](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/input.rs) supplies the display, keypad and loop.
+
+`drain(&mut app, max_messages)` processes at most the requested number of messages, calls `App::update` once per message, then calls `App::view` and reconciles once for the whole batch. It returns `DrainStats`:
+
+- `processed`: messages applied in this call.
+- `dropped`: messages dropped during this call because the queue was full.
+- `reconciled`: whether this call produced a render.
+
+A drain that processes no message skips the view and reconciliation unless `mark_dirty` or `set_theme` requested a render, or no tree is mounted. State changed outside the message path, such as a clock or a sensor read in `view`, must call `Ui::update(&app)` or `Ui::mark_dirty()`. `Ui::stats` reports cumulative `messages_processed`, `messages_dropped` and `reconciled_updates` together with node counters.
+
+Programmatic writes to controlled widgets suppress the next native `VALUE_CHANGED` event, so rendering a slider value does not feed the application its own write. User changes still enqueue messages. Replacing a handler keeps the node's native callback slot and drops the captures of the old closure.
+
+## Choose an event handler
+
+Direct handlers respond to their own node. Descendant events require a bubbled handler and native bubbling flags. Each builder installs one independent handler. Calling the same builder again replaces only that handler; different handlers on one node combine.
+
+| Builder | Message payload | Delivery |
+| --- | --- | --- |
+| `on_click(msg)` | `M` cloned per event | `LV_EVENT_CLICKED` on the node |
+| `on_value_changed(f)` | `i32`, read from the native widget after the change | `VALUE_CHANGED`; see the per-widget values below |
+| `on_text_changed(f)` | `&str` borrowed for the call | `VALUE_CHANGED` on a textarea; copy the text to retain it |
+| `on_key(f)` | full `u32` LVGL key code | `LV_EVENT_KEY`; `NEXT`/`PREV` are consumed by focus navigation |
+| `on_rotary(f)` | signed `i32` delta | `LV_EVENT_ROTARY` |
+| `on_gesture(f)` | `GestureDirection` | one directional gesture event; the generic `Gesture` event is separate |
+| `on_scroll(f)` | `ScrollOffset { x, y }` in pixels | continuous `SCROLL`, including programmatic scrolling |
+| `on_pointer(f)` | `PointerEvent { event, x, y }` in display pixels | native pointer press, pressing, click, long-press and release events |
+| `on_long_press(msg)` | `M` cloned | `LONG_PRESSED`, not `LONG_PRESSED_REPEAT` |
+| `on_event(f)` | `&Event -> Option<M>` | supported events whose target is this node |
+| `on_bubbled_event(f)` | `&InputEvent -> Option<M>` | events bubbled from descendants |
+
+`on_value_changed` reads the value that the native widget holds after the change: the value of a slider, bar or arc; `1` or `0` for a switch or checkbox; the selected index of a dropdown, roller or button matrix; a spinbox value; the active tab or tile index; a calendar date packed by `CalendarDate::to_value`; a table cell packed by `(row << 16) | column`; or a message-box footer index. A tileview reports `-1` before a tile is active, and a calendar reports `-1` for day names and adjacent-month days.
+
+`on_text_changed` is valid only on a textarea. The string is borrowed from LVGL for the duration of the callback; build an owned `String` if the message must keep it. Native text that is not valid UTF-8 is skipped.
+
+`on_event` receives the payload-free `Event` enum, which covers press, click, focus, hover, key, rotary, ready, cancel, scroll and gesture codes. Events bubbled from descendants are ignored by `on_event`. `on_bubbled_event` receives the copied `InputEvent` (`Key`, `Rotary`, `Gesture`, `Scroll`, `Pointer` or `Other(Event)`) and is the way to observe a child's input from an ancestor. Every intervening child must enable `.event_bubble(true)`; gesture propagation follows LVGL's separate target rules and `.gesture_bubble(bool)`.
+
+The payload handlers are available with every widget selection; no optional feature gates `on_key`, `on_pointer` or the queue. Missing native key or rotary parameters and pointer events without a pointer device do not produce invented payloads.
+
+## Focus, keypads and encoders
+
+The `input-keypad` feature is off by default. It forwards `rs_lvgl/input-keypad` and adds the focus API to `Ui`; the `rs_lvgl` keypad driver and `input_device::key` constants are available under the same feature. Enabling it does not activate focus by itself, and a pointer-only screen keeps its previous behavior.
+
+An explicit per-UI group is required:
+
+- `Ui::bind_keypad(&Keypad)` binds a live typed keypad on the same display and activates the group.
+- `unsafe Ui::bind_input(NonNull<lv_indev_t>)` binds a platform keypad or encoder. The device must be live on the UI thread and belong to the same display; keypads and encoders only.
+- `Ui::enable_focus()` activates a group without a bound device.
+- `Ui::focus(Key)` focuses the unique non-`Auto` key across the view and overlay. It returns `false` for a missing or ineligible node and `UiError::InvalidProperty` for an ambiguous key or `Key::Auto`.
+- `Ui::set_editing(bool)` selects native encoder editing or navigation mode.
+
+```rust
+ui.bind_keypad(&keypad)?;
+ui.focus(Key::Named("save"))?;
+```
+
+The fragment assumes `keypad` is a live `Keypad` on the same display; the input example covers display and device setup.
+
+`NEXT` and `PREV` move group focus. `ENTER` activates the focused widget through the same native click path as a pointer, so `on_click` receives the same message. Arrow keys operate the focused widget. A label or other non-focusable class needs `.focusable(true)` before it can join the group, and `.focusable(false)` removes a node that the class would otherwise include. Hidden and disabled nodes, including descendants of hidden or disabled parents, are excluded.
+
+`State::FOCUSED` and `State::FOCUS_KEY` style the focus ring and are switched by LVGL without a render. `on_event` reports `Event::Focused` and `Event::Defocused` when the group changes focus.
+
+`View::modal(true)` restricts focus to a subtree while it is visible and enabled; the last modal in view/overlay pre-order wins. Closing it restores the previous mounted node when that node is still eligible, including an auto-keyed node. The `Dialog` component sets this on its backdrop when `input-keypad` is enabled. Modal membership scopes keyboard focus; blocking pointer input requires the dialog's full-size backdrop.
+
+`input-gridnav` includes `input-keypad` and adds arrow navigation among the direct children of an object, row, column or grid. `GridNavigation` carries `rollover`, `scroll_first` and `axis` (`NavigationAxis::Both`, `Horizontal` or `Vertical`); `View::grid_navigation` enables it. The container occupies one Tab position, and arrows select a clickable eligible child. This feature also changes nothing until focus is activated.
+
+## Callback execution and borrowing
+
+Handlers run synchronously inside the native event callback on the UI thread. They must not call `Ui` methods, run `App::update`, reconcile, delete native objects, block, or panic. A panic in an `extern "C"` callback cannot unwind into C and aborts instead. The library-side callbacks copy input data and post messages; application logic belongs in `update`.
+
+The borrow rules follow from that synchronous call:
+
+- `on_text_changed` receives a `&str` tied to LVGL's buffer for that call only. Copy it before storing.
+- `PointerEvent`, `ScrollOffset`, `GestureDirection` and the key/rotary values are copied. `InputEvent` contains only copied data; no native pointer or borrowed event escapes C.
+- `on_click` and `on_long_press` store their message and clone it per event; the message type must be `Clone`.
+- Handler closures are `FnMut + 'static` and are owned by the mounted node. When a handler is replaced or the node is deleted, the old closure is dropped.
+
+The busy guard rejects nested UI mutation with `UiError::Reentrant`, and a nested `timer_handler` returns `0`. Those checks do not make callbacks a safe place for application work; they only prevent a reentrant call from corrupting the tree.
+
+`Ui` is neither `Send` nor `Sync`, and the queue is not a cross-thread channel. All LVGL access, message posting and draining stay on one UI thread. The crate makes no unwinding, thread-safety or concurrent-access promise for handlers or native callbacks.
+
+## Lifetime and teardown
+
+Input binding belongs to the `Ui`, not to the descriptor tree. A native group belongs to one `Ui`; it is separate from LVGL's global default group. `Ui::unmount` deletes the trees, drops the focus group and detaches its devices while the native display is still alive. A later `mount` creates a fresh tree and requires `bind_keypad`/`bind_input` again. Dropping a `Ui` also deletes its root and its focus group; the native display must outlive the `Ui`, and [Declarative UI](./declarative-ui.mdx) describes the teardown order.
+
+`Keypad` owns its native input device: dropping it deletes the device unless native deletion already released it, after which `Keypad::raw()` returns `None`. Never delete a device from inside one of its callbacks, and do not keep a raw device pointer past native deletion.
+
+The queue and boxed handlers allocate. `rs_lvgl_ui` is `no_std` outside tests and requires `alloc`, so the target must provide an allocator; `input-keypad` does not remove that requirement. Native allocation failures surface as `UiError::Allocation` during creation and update, not as a silently dropped input event.
+
+## Runnable example
+
+[input.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/input.rs) creates an SDL window, mouse and keyboard, mounts two buttons and a scrollable column, binds the keyboard to the UI, focuses `Key::Named("add")`, and drains pointer clicks, key codes and scroll offsets in its frame loop.
+
+```sh
+cargo run -p rs_lvgl_ui --example input --features simulator,input-keypad
+```
+
+The example target requires `simulator` and `input-keypad`. It needs SDL2 and a visible interactive window; `INPUT_FRAMES=<n>` bounds the run without replacing OS input. A compile check or a headless command does not exercise the keyboard path.
+
+
+<GuideLinks items={["components", "runtime"]} />

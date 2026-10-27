@@ -1,0 +1,114 @@
+{
+  "schema": 1,
+  "nativeIdentity": "ecaedc308b4b8b0e77b7159caddafa0fea66a95f1a582efafd799c1ca0814da7",
+  "renderer": "rs_lvgl_ui::Ui::snapshot / LVGL 9.6",
+  "viewport": {
+    "width": 640,
+    "height": 400,
+    "theme": "light"
+  },
+  "examples": [
+    {
+      "id": "column",
+      "title": {
+        "zh": "从一列开始",
+        "en": "Start with a column"
+      },
+      "description": {
+        "zh": "子节点按集合顺序排列，gap 控制间距。",
+        "en": "Children follow collection order; gap sets their spacing."
+      },
+      "source": "use rs_lvgl_ui::prelude::*;\n\nfn view(theme: &Theme) -> View<()> {\n    column([\n        label(\"Hello, LVGL\").style(Style::title(theme)),\n        label(\"A screen is a tree of ordinary Rust values.\").style(Style::body(theme)),\n        button(\"Start building\").style(Style::accent(theme)),\n    ])\n    .style(Style::screen(theme).pad(24).gap(16))\n}\n",
+      "sourceHash": "c346257bc9b520306f57473138efd3f33ddb669d5d54297d54559146c61ed059",
+      "imageHash": "ef389e582e27143f96b9a109a932a00252eb76782291774cac4e7f823479d15d",
+      "image": "/playground/column.png",
+      "width": 640,
+      "height": 400
+    },
+    {
+      "id": "row",
+      "title": {
+        "zh": "给内容留出空间",
+        "en": "Make room for content"
+      },
+      "description": {
+        "zh": "用 flex_grow 分配剩余空间，组织一行操作。",
+        "en": "Distribute remaining space with flex_grow in an action row."
+      },
+      "source": "use rs_lvgl_ui::prelude::*;\n\nfn view(theme: &Theme) -> View<()> {\n    let actions = row([\n        button(\"Back\").style(Style::body(theme)),\n        label(\"Step 2 of 3\").style(Style::body(theme).flex_grow(1)),\n        button(\"Continue\").style(Style::accent(theme)),\n    ])\n    .style(Style::surface(theme).width(Size::Percent(100)).gap(12));\n\n    column([\n        label(\"Make room\").style(Style::title(theme)),\n        label(\"The middle label grows into the available space.\"),\n        actions,\n    ])\n    .style(Style::screen(theme).pad(24).gap(20))\n}\n",
+      "sourceHash": "0a4881ab6b01ae7b9b764417b9be27ad57070d9b54d85a12722aefb35cf11228",
+      "imageHash": "b716cb93c0264716fd1aa29924ed11dfe1c125aca086de39533e9d6d1333ea00",
+      "image": "/playground/row.png",
+      "width": 640,
+      "height": 400
+    },
+    {
+      "id": "grid",
+      "title": {
+        "zh": "用网格指定位置",
+        "en": "Place views in a grid"
+      },
+      "description": {
+        "zh": "轨道决定尺寸，grid_cell 决定位置和跨度。",
+        "en": "Tracks set sizes; grid_cell sets position and span."
+      },
+      "source": "use rs_lvgl_ui::prelude::*;\n\nfn view(theme: &Theme) -> View<()> {\n    let tiles = grid(\n        [GridTrack::Fr(1), GridTrack::Fr(1)],\n        [GridTrack::Px(72), GridTrack::Px(72)],\n        [\n            button(\"Top left\").grid_cell(0, 0, 1, 1),\n            button(\"Top right\").grid_cell(1, 0, 1, 1),\n            button(\"Two columns\").grid_cell(0, 1, 2, 1),\n        ],\n    )\n    .style(Style::surface(theme).width(Size::Percent(100)).gap(12));\n\n    column([\n        label(\"A place for everything\").style(Style::title(theme)),\n        tiles,\n    ])\n    .style(Style::screen(theme).pad(24).gap(20))\n}\n",
+      "sourceHash": "3c3855d9b8a30a973bcef5c9f2d7c4d52334d4344354d1d2329a710a16d689f2",
+      "imageHash": "5dce39855bf4503f0bed9c339c98d1ca98d0c1a08009bf661e70da165d0649e0",
+      "image": "/playground/grid.png",
+      "width": 640,
+      "height": 400
+    },
+    {
+      "id": "title",
+      "title": {
+        "zh": "提取一个标题",
+        "en": "Extract a title"
+      },
+      "description": {
+        "zh": "普通函数返回 View，复用结构与样式。",
+        "en": "An ordinary function returns a View to share structure and style."
+      },
+      "source": "use rs_lvgl_ui::prelude::*;\n\nfn page_title<M>(text: &str, theme: &Theme) -> View<M> {\n    column([\n        label(\"WORKSPACE\").style(Style::muted(theme)),\n        label(text).style(Style::title(theme)),\n    ])\n    .style(Style::default().gap(8))\n}\n\nfn view(theme: &Theme) -> View<()> {\n    let content = label(\"Notification preferences\");\n    let title = page_title(\"Settings\", theme);\n\n    column([title, content, button(\"Save\").style(Style::accent(theme))])\n        .style(Style::screen(theme).pad(24).gap(24))\n}\n",
+      "sourceHash": "0627517edda5a9cac15ae5189d62f7fbde2d2ffea49c938079db35e744faaa2e",
+      "imageHash": "002c1aa9725c469c55e745e651db9ad1453fb209793ddc29008f2467ffb5713b",
+      "image": "/playground/title.png",
+      "width": 640,
+      "height": 400
+    },
+    {
+      "id": "controls",
+      "title": {
+        "zh": "组合设备控件",
+        "en": "Compose device controls"
+      },
+      "description": {
+        "zh": "修改滑块、开关和按钮的初始外观。",
+        "en": "Change the initial appearance of sliders, switches and buttons."
+      },
+      "source": "use rs_lvgl_ui::prelude::*;\n\nfn view(theme: &Theme) -> View<()> {\n    column([\n        label(\"Device settings\").style(Style::title(theme)),\n        row([\n            label(\"Brightness\").style(Style::body(theme)),\n            slider(0, 100, 64).style(Style::default().width(Size::Px(240)).height(Size::Px(16))),\n            label(\"64%\"),\n        ])\n        .style(Style::surface(theme).gap(24)),\n        row([label(\"Notifications\"), switch(true)]).style(Style::surface(theme).gap(24)),\n        button(\"Apply settings\").style(Style::accent(theme)),\n    ])\n    .style(Style::screen(theme).pad(24).gap(24))\n}\n",
+      "sourceHash": "45dfb15f2d7d0834db77b6d6a23189e853c6d1dc776a408e7061686033383e74",
+      "imageHash": "036327e8625b743b524d6961157fd1e2682dd5f1b0ecfe562f3a17e1f1828797",
+      "image": "/playground/controls.png",
+      "width": 640,
+      "height": 400
+    },
+    {
+      "id": "keyed-list",
+      "title": {
+        "zh": "为条目保留身份",
+        "en": "Give items an identity"
+      },
+      "description": {
+        "zh": "集合决定顺序，稳定的业务 ID 决定身份。",
+        "en": "The collection determines order; stable business IDs determine identity."
+      },
+      "source": "use rs_lvgl_ui::prelude::*;\n\nfn view(theme: &Theme) -> View<()> {\n    let devices = [(41, \"Studio\"), (73, \"Kitchen\"), (92, \"Bedroom\")];\n    let rows = devices.into_iter().map(|(id, name)| {\n        row([\n            label(name).style(Style::body(theme).flex_grow(1)),\n            label(format!(\"ID {id}\")).style(Style::muted(theme)),\n        ])\n        .key(Key::Id(id))\n        .style(Style::surface(theme).width(Size::Percent(100)).pad(16))\n    });\n\n    column([label(\"Your devices\").style(Style::title(theme))])\n        .children(rows)\n        .style(Style::screen(theme).pad(24).gap(12))\n}\n",
+      "sourceHash": "4c784639f7737bd005922c92f42bbc82e83b950afd07636d4238642bc1515a32",
+      "imageHash": "b844cf65815cb6edf8e77eebd7c15cc36f9be47b96dbcd831e5806a2059d2417",
+      "image": "/playground/keyed-list.png",
+      "width": 640,
+      "height": 400
+    }
+  ]
+}

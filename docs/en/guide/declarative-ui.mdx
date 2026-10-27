@@ -1,0 +1,126 @@
+---
+title: Arrange widgets
+description: Arrange LVGL widgets in columns, rows and grids, set sizes and styles, and give list items stable keys.
+---
+
+import { ArchifyDiagram } from '../../../components/ArchifyDiagram';
+import { ConceptDiagram } from '../../../components/ConceptDiagram';
+import { NativeExample } from '../../../components/NativeExample';
+import { GuideLinks } from '../../../components/GuideLinks';
+
+# Arrange widgets
+
+A settings screen might have a title, some content and action buttons. In `rs_lvgl_ui`, ordinary Rust functions describe those widgets; `column`, `row` and `grid` arrange them. LVGL handles layout and drawing.
+
+## Start with a column
+
+The `view` below returns a title, a description and a button. `column([...])` arranges them from top to bottom in collection order, and `.gap(16)` leaves 16 pixels between adjacent widgets.
+
+<NativeExample id="column" />
+
+Change `gap(16)` to `gap(24)`, select **Run** and compare the spacing. You can also swap the title and description in the array and run it again.
+
+Constructors return a `View<M>` description. They do not create native widgets yet. `M` is the application's message type; a view without messages can use `View<()>`. Import the common functions and types with `use rs_lvgl_ui::prelude::*`.
+
+## Change the child order
+
+<ConceptDiagram kind="tree" />
+
+In `column([title, content, actions])`, the title appears first and the actions last. Arrays, vectors and iterators all preserve the supplied order; `row` lays out the same sequence horizontally. Sizes, spacing and alignment determine the pixel positions.
+
+Extracting the title into a variable or function follows the same rule:
+
+```rust
+use rs_lvgl_ui::prelude::*;
+
+fn page_title<M>(text: &str, theme: &Theme) -> View<M> {
+    label(text).style(Style::title(theme))
+}
+
+fn settings_view(theme: &Theme) -> View<()> {
+    let content = label("Notification preferences");
+    let title = page_title("Settings", theme);
+    column([title, content]).style(Style::default().gap(12))
+}
+```
+
+The code creates `content` before `title`, but the title appears first because it is the first item passed to `column`. A helper returns an ordinary `View<M>` and creates a fresh description on each call. It adds no state or cache. This is useful for reusing title styles; see [Reuse components](./components.mdx).
+
+`.child(node)` appends one child; `.children(items)` appends several. `obj`, `row`, `column` and `grid` are containers, as are `tabview`, `tileview` and `msgbox` with their features enabled. Adding children to a button or label returns `UiError::InvalidProperty` before the native tree is changed.
+
+## Set sizes, spacing and alignment
+
+Apply layout properties with `.style(...)`. Common choices are:
+
+| Property | Effect |
+| --- | --- |
+| `.gap(12)` | Leave 12 pixels between adjacent children |
+| `.pad(16)` | Leave 16 pixels between the content and container edges |
+| `.width(Size::Percent(100))` | Fill the parent's available width |
+| `.height(Size::Px(48))` | Use a fixed height |
+| `.flex_grow(1)` | Take a share of the remaining flex space |
+| `.flex_align(main, cross)` | Align children along the main and cross axes |
+
+`Size::Content` sizes a widget to its content. `.align(...)` positions a widget in its parent; `.flex_align(...)` arranges a container's children.
+
+## Place widgets in a grid
+
+`grid(columns, rows, children)` takes column tracks, row tracks and children. Tracks use `GridTrack::Px`, `Fr` or `Content`. Each child uses `.grid_cell(column, row, column_span, row_span)` to set its position and span.
+
+<NativeExample id="grid" />
+
+Change `.grid_cell(...)` to move a widget, or change the tracks to resize its available space. Swapping two items in the collection does not change their assigned cells. `.grid_align(column, row)` sets alignment within a cell. Tracks and cells are reapplied only when their descriptions change.
+
+## Style the widgets
+
+Styles build on the widget defaults. For example, `Style::screen(theme).pad(16)` applies the screen style and padding. Unset properties continue to use LVGL defaults or inherit from the parent.
+
+`Style::default()` sets nothing and inherits every LVGL class default. `Style::neutral()` clears the non-inheritable layout and appearance fields; plain containers and labels start transparent and borderless, while text color, font and text alignment stay unset so they inherit from the parent. The theme presets are `Style::title`, `body`, `muted`, `surface`, `accent` and `screen`. `Style::accent` also clears the native shadow, so a flat action button matches a dark background. A plain button keeps the native theme's surface and shadow unless the view overrides them.
+
+Interaction states use local style selectors: `.state_style(State::PRESSED, ...)` and `.state_style(State::FOCUSED, ...)` switch while LVGL holds the state. They do not enqueue messages or trigger a render.
+
+## Give list items stable keys
+
+When a list can insert, remove or reorder items, use `Key::Id(item.id)` to identify each item. The key follows the item; collection order determines placement. An array index follows a position and cannot identify an item after reordering.
+
+<ConceptDiagram kind="keys" />
+
+`Key` identifies a child among its siblings:
+
+- `Key::Auto` (default) matches by position among the `Auto` siblings.
+- `Key::Named(&'static str)` matches by a static name.
+- `Key::Id(u64)` matches by an application identifier.
+
+Named and ID keys must be unique among siblings; duplicates fail validation with `UiError::DuplicateKey`. `Named` takes a `&'static str`, so identifiers generated at runtime use `Key::Id`. Keyboard IDs are looked up across the view and overlay, so they should be unique across both trees.
+
+Keys make list updates local:
+
+```rust
+// Msg::Remove(u64) is an application message in this fragment.
+column(items.iter().map(|item| {
+    row([
+        label(item.name.clone()).style(Style::default().flex_grow(1)),
+        button("Remove").on_click(Msg::Remove(item.id)),
+    ])
+    .key(Key::Id(item.id))
+}))
+```
+
+<details>
+<summary>Which native widgets are reused during an update?</summary>
+
+On each render, the reconciler matches keyed children by value and auto children by position. It reuses a native object when the key and widget kind are unchanged, writes changed properties and styles in place, creates new children, deletes removed ones and reorders survivors. The reorder keeps a longest increasing subsequence of current positions, so only children outside it move. A key change, a widget-kind change, a custom-widget variant change, or a structural property that LVGL cannot patch replaces that native subtree. The root and tab pages follow the same identity rule.
+
+For a keyed list, changing one item's text updates one native label; appending one row creates one subtree; moving one row moves it without recreating its neighbors. Native identity also preserves focus and scroll position while the node stays in the tree and remains eligible. `Ui::stats` reports `created_nodes`, `deleted_nodes` and `moved_nodes`.
+
+</details>
+
+## Read application state in the view
+
+When a title, switch value or list changes, `App::view` returns a new `View<Msg>`. `View<M>` is an alias for `Node<M>`, so helpers and built-in constructors return the same type.
+
+<ArchifyDiagram id="data-model" />
+
+`Settings.enabled` and `Settings.changes` in the diagram come from the [switch example](./input-and-events.mdx). `update` changes those fields, and `view` uses them to describe the widgets. `Ui` borrows the app to apply an update; the state remains in the application struct. Next, connect input to the screen. See [Mount and update](./ui-runtime.mdx) for the platform loop and cleanup.
+
+<GuideLinks items={["events", "components", "runtime"]} />

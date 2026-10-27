@@ -1,0 +1,97 @@
+---
+title: Try code in the browser
+description: Edit Rust UI examples and interact with real LVGL widgets without a local service. Learn the supported syntax, diagnostics and optional local compiler mode.
+---
+
+# Try code in the browser
+
+Open the [playground](../playground.mdx), replace `Notifications` in the switch example with your own title, and select **Run**. Toggle the switch on the right: the status text and count update with it. You do not need to install Rust or start a compilation service.
+
+A prebuilt WebAssembly engine parses and interprets Rust UI code, then calls `rs_lvgl_ui` and LVGL to create and draw the widgets. Layout, input and messages run in a browser Worker. Edited source stays in your browser.
+
+## What you can change
+
+All seven documentation examples are editable. Start with text, spacing and dimensions, then change the state in `App` and the message handling in `update`.
+
+| Area | Browser support |
+| --- | --- |
+| Application | One `impl App` with `type Msg`, `update` and `view`; `fn app() -> impl App` returns initial state |
+| Data | Named-field and unit structs, unit or tuple message variants; booleans, integers, strings, arrays and tuples |
+| Expressions | `let`, ordinary helper functions, closures, `if`, `match` without guards, array indexing, scalar comparisons and arithmetic, assignments |
+| Lists | Arrays with `.into_iter().map(...)`; named child views; `.child(...)` and `.children(...)` |
+| Text | `format!("{}", value)`, `format!("{name}")`, `.to_string()`; format specifiers are not supported |
+| Layout | `obj`, `row`, `column`, `grid`; `Size`, `GridTrack`, `grid_cell` and stable `Key` values |
+| Widgets | `label`, `button`, `switch`, `slider`, `bar`, `arc`, `checkbox`, `textarea`, `dropdown`, `roller`, `spinbox`, `spinner`, `led` |
+| Input | `on_click`, `on_long_press`, `on_value_changed`, `on_text_changed`; text areas support `placeholder`, `password`, `multiline`, `keyboard_id` |
+| Style | The six `Style` theme presets, `default`, `neutral`; padding, gaps, sizes and min/max sizes, colors, borders, radius, opacity, alignment, offsets, hiding and disabling |
+
+Import `use rs_lvgl_ui::prelude::*;` and follow the function syntax in the examples. Use `Color::rgb(240, 120, 60)` for colors. Integers support `i8` through `i64` and `u8` through `u64`; `isize` and `usize` use 32 bits. A value outside its declared field type or UI parameter range reports an error instead of being truncated.
+
+For example, keep a slider value in state and write it back when a message arrives:
+
+```rust
+use rs_lvgl_ui::prelude::*;
+
+struct Brightness {
+    level: i32,
+}
+
+#[derive(Clone)]
+enum Message {
+    Level(i32),
+}
+
+impl App for Brightness {
+    type Msg = Message;
+
+    fn update(&mut self, message: Message) {
+        match message {
+            Message::Level(value) => {
+                self.level = value;
+            }
+        }
+    }
+
+    fn view(&self, theme: &Theme) -> View<Message> {
+        column([
+            label(format!("Brightness: {}", self.level)),
+            slider(0, 100, self.level)
+                .on_value_changed(|value| Message::Level(value))
+                .style(Style::default().width(Size::Px(240))),
+        ])
+        .style(Style::screen(theme).pad(32).gap(24))
+    }
+}
+
+fn app() -> impl App {
+    Brightness { level: 40 }
+}
+```
+
+Copy the complete example into the playground and drag the slider. The number changes with it. `view` describes the current screen and `update` changes state, following the same structure as a device application.
+
+## When code fails
+
+Diagnostics include a source line you can select to return to the editor. Syntax errors, unsupported calls, out-of-range values and execution limits have separate messages. Native LVGL view-validation errors point to `view`; the message describes the invalid tree.
+
+If an edit fails, the last successful image stays visible. Fix the code and run it again. **Reset** restores the example source; **Restart preview** starts the currently previewed code from its initial state. Every successful run creates a new application, so earlier clicks do not carry over.
+
+The browser engine does not execute `rustc` or perform full type inference, ownership or borrow checking. It checks supported values and UI parameters at runtime. Code that runs here still needs to compile with Cargo in your application. Unsupported syntax is rejected even in branches that do not execute.
+
+Execution is bounded to keep the page responsive: 32 KiB of source, 64 levels of source nesting, 32 function calls deep, 96 evaluation levels, and 20,000 evaluation steps per view or message update. A collection can contain 512 items, a view 512 nodes, a value 4096 entries, text 16 KiB, and a run 4096 distinct keys. Exceeding a limit reports an error. An unresponsive Worker is terminated after 5 seconds.
+
+## When you need full Rust
+
+External crates, other trait implementations, loops, asynchronous code, pointers and `unsafe`, custom macros, and component features outside the table require the local compiler. Browser mode never switches to it automatically.
+
+Install Rust, a C compiler and libclang as described in [Getting started](./getting-started.mdx), then clone [rs_lvgl_website](https://github.com/umbrella22/rs_lvgl_website) with `--recurse-submodules`. The [website README](https://github.com/umbrella22/rs_lvgl_website#build-from-a-clean-checkout) lists the dependency preparation commands. The local playground also needs Node.js and npm (verified with Node.js 24), and Emscripten (verified with 6.0.13). On macOS, run `brew install emscripten`; on Linux, use the [official emsdk](https://emscripten.org/docs/getting_started/downloads.html). Make sure `emcc`, `em++`, `embuilder` and `em-config` are on PATH, then run these commands from the website root:
+
+```sh
+rustup target add wasm32-unknown-emscripten
+npm ci
+npm run playground
+```
+
+Open the URL printed in the terminal, normally `http://127.0.0.1:4173/rs_lvgl_website/`. In the playground, open **Run settings** at the top right and select **Local Rust compiler** under **Run mode**. Edit the code and select **Run** to see the rebuilt application and interact with it. You can also change display size and theme, or enable automatic runs.
+
+Each successful run starts with fresh application state. A failed compilation shows source locations and retains the last working preview. The service listens on loopback, does not upload source, and compiles and runs code with your account's permissions. Run only trusted code. Edits supported by Browser mode do not require this toolchain.

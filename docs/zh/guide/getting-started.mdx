@@ -1,0 +1,93 @@
+---
+title: 快速开始
+description: 从 crates.io 添加 rs_lvgl 和 rs_lvgl_ui，检查构建环境，再将 LVGL 接入自己的 Rust 嵌入式项目。
+---
+
+import { Steps } from '@rspress/core/theme';
+import { PlatformTabs, PlatformTab } from '../../../components/PlatformTabs';
+import { GuideLinks } from '../../../components/GuideLinks';
+
+# 快速开始
+
+`rs_lvgl` 为 Rust 嵌入式应用提供 LVGL 控件、显示和输入接口。这一页从 crates.io 添加依赖，在开发机上确认构建环境，再接入设备的驱动与时钟。
+
+想先看看控件的效果，可以打开[组件预览](../studio.mdx)，直接操作开关、滑块和其他控件。
+
+## 安装到项目
+
+<Steps>
+
+### 安装工具链
+
+通过 [rustup](https://rustup.rs/) 安装稳定版 Rust。构建 LVGL 还需要 C 编译器和 libclang：
+
+<PlatformTabs>
+<PlatformTab label="macOS">
+
+```sh
+xcode-select --install
+```
+
+Xcode 命令行工具提供 clang、libclang 和 C/C++ 编译器。
+
+</PlatformTab>
+<PlatformTab label="Debian / Ubuntu">
+
+```sh
+sudo apt-get update
+sudo apt-get install build-essential clang libclang-dev
+```
+
+`build-essential` 提供编译工具，`libclang-dev` 用于生成 Rust 绑定。
+
+</PlatformTab>
+</PlatformTabs>
+
+SDL2 仅用于桌面窗口，安装步骤见[运行示例](./examples.mdx)。启用 Lottie 时还需要 C++14 编译器。
+
+### 创建项目并添加依赖
+
+```sh
+cargo new my-display
+cd my-display
+cargo add rs_lvgl --no-default-features --features alloc
+cargo add rs_lvgl_ui
+```
+
+已有项目可以直接在项目目录执行两条 `cargo add` 命令。Cargo 会从 crates.io 解析版本并写入 `Cargo.toml`。
+
+### 检查构建环境
+
+```sh
+cargo check
+```
+
+首次构建会编译 crate 内附的 LVGL 9.6 C 源码，并生成 Rust 绑定与控件封装。Cargo 负责下载和构建这些依赖，无需单独安装 LVGL。后续构建会在输入未变化时复用缓存。
+
+命令成功后，依赖与本机构建工具已就绪。要在设备屏幕上显示界面，还需配置目标工具链、分配器、显示驱动、输入和时钟，步骤见[接入设备](./native-integration.mdx)。
+
+</Steps>
+
+## 选择需要的接口
+
+- [`rs_lvgl`](https://crates.io/crates/rs_lvgl) 提供控件、显示、输入和计时接口。直接管理 LVGL 控件的应用，添加这一个依赖即可。
+- [`rs_lvgl_ui`](https://crates.io/crates/rs_lvgl_ui) 在它之上提供状态驱动的界面：用视图描述当前状态，交给运行时更新控件。上面的安装命令包含这一层。
+
+`rs_lvgl_ui` 默认包含组合组件、常用控件和内附字体。可以按设备需求选择更小的[特性集合](./features.mdx)。不支持自动初始化的目标需启用 `no-autoinit`，并先调用 `rs_lvgl::init()`；界面挂载和更新见[挂载与更新](./ui-runtime.mdx)。
+
+<details>
+<summary>什么时候需要 rs_lvgl_sys 和 rs_lvgl_codegen？</summary>
+
+`rs_lvgl_sys` 编译原生库并暴露原始 C 绑定。应用需要自定义 C 符号时，可以直接依赖它；配置头文件与字体的接入方式见[原生构建配置](./native-integration.mdx)。`rs_lvgl_codegen` 是构建时生成控件封装的工具，普通应用不需要直接使用。
+
+</details>
+
+## 修改文档中的 Rust 示例
+
+指南里的示例可以直接编辑和操作。修改文字或布局后点击**运行**即可，范围和完整示例见[在浏览器中试写](./browser-playground.mdx)。
+
+需要运行带桌面窗口的完整程序时，继续阅读[运行示例](./examples.mdx)。
+
+## 继续编写界面
+
+<GuideLinks items={["views", "events", "components"]} />

@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "How one switch interaction updates the screen",
+    "locale": "en",
+    "output": ".archify/dataflow-message-flow-en-20261026-175054/message-flow.html",
+    "quality_profile": "showcase"
+  },
+  "stages": [
+    {
+      "label": "Input"
+    },
+    {
+      "label": "Callback"
+    },
+    {
+      "label": "UI runtime"
+    },
+    {
+      "label": "Application"
+    },
+    {
+      "label": "Apply view"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "switch",
+      "label": "Switch",
+      "sublabel": "VALUE_CHANGED",
+      "type": "frontend",
+      "stage": 0,
+      "row": 0
+    },
+    {
+      "id": "handler",
+      "label": "Value mapping",
+      "sublabel": "value != 0",
+      "type": "backend",
+      "stage": 1,
+      "row": 0
+    },
+    {
+      "id": "queue",
+      "label": "EventQueue<M>",
+      "sublabel": "Enabled(bool)",
+      "type": "messagebus",
+      "stage": 2,
+      "row": 0
+    },
+    {
+      "id": "update",
+      "label": "App::update",
+      "sublabel": "enabled / changes",
+      "type": "backend",
+      "stage": 3,
+      "row": 0
+    },
+    {
+      "id": "view",
+      "label": "App::view",
+      "sublabel": "View<Message>",
+      "type": "backend",
+      "stage": 3,
+      "row": 2
+    },
+    {
+      "id": "theme",
+      "label": "Theme",
+      "sublabel": "Colors, spacing, styles",
+      "type": "backend",
+      "stage": 2,
+      "row": 2
+    },
+    {
+      "id": "render",
+      "label": "Validate + diff",
+      "sublabel": "Ui::render",
+      "type": "backend",
+      "stage": 4,
+      "row": 2
+    },
+    {
+      "id": "failure",
+      "label": "UiError",
+      "sublabel": "Invalid view rejected",
+      "type": "backend",
+      "stage": 4,
+      "row": 4
+    }
+  ],
+  "flows": [
+    {
+      "id": "read-value",
+      "from": "switch",
+      "to": "handler",
+      "label": "i32"
+    },
+    {
+      "id": "post-message",
+      "from": "handler",
+      "to": "queue",
+      "label": "Message"
+    },
+    {
+      "id": "drain-message",
+      "from": "queue",
+      "to": "update",
+      "label": "Ui::drain"
+    },
+    {
+      "id": "updated-state",
+      "from": "update",
+      "to": "view",
+      "label": "updated state"
+    },
+    {
+      "id": "borrow-theme",
+      "from": "theme",
+      "to": "view",
+      "label": "&Theme"
+    },
+    {
+      "id": "new-description",
+      "from": "view",
+      "to": "render",
+      "label": "View<M>"
+    },
+    {
+      "id": "apply-native",
+      "from": "render",
+      "to": "switch",
+      "label": "silent UI sync",
+      "route": "bottom-channel",
+      "fromSide": "bottom",
+      "toSide": "bottom"
+    },
+    {
+      "id": "invalid-view",
+      "from": "render",
+      "to": "failure",
+      "label": "invalid view",
+      "fromSide": "right",
+      "toSide": "right",
+      "route": "vertical-channel",
+      "channelX": 1034,
+      "labelAt": [
+        970,
+        504
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Callbacks post messages",
+      "items": [
+        "The native 1/0 value maps to Enabled(true/false). The callback does not call App::update.",
+        "A full queue drops its oldest message and increments dropped; buffering is bounded.",
+        "Programmatic value changes are suppressed during view writes so the app does not enqueue its own update."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Describe the view after the batch",
+      "items": [
+        "Ui::drain processes its message budget, then reconciles once. An idle, clean UI skips that work.",
+        "This is the message path. The platform timer loop also advances LVGL drawing and animation."
+      ]
+    }
+  ]
+}

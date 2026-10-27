@@ -1,0 +1,181 @@
+---
+title: 运行示例
+description: 在浏览器中试布局，或运行带显示初始化和输入循环的 Rust 示例；查看各示例所需的 Cargo features。
+---
+
+import { NativeExample } from '../../../components/NativeExample';
+import { PlatformTabs, PlatformTab } from '../../../components/PlatformTabs';
+
+# 运行示例
+
+在浏览器中试一个布局，或运行包含显示初始化、输入和清理的完整程序。下面按这两种用途组织示例。
+
+## 在浏览器中试布局
+
+先在本页改一处布局，运行后观察结果。示例与修改后的代码都可在浏览器中运行并接收输入，具体范围见[支持的语法](./browser-playground.mdx)。需要状态与控件联动时，从[开关示例](./input-and-events.mdx)开始。
+
+### 排列一行
+
+<NativeExample id="row" />
+
+可以修改行内间距，或把 `row` 改成 `column`。子节点集合继续决定先后顺序，容器决定布局方向。
+
+### 放置网格单元
+
+<NativeExample id="grid" />
+
+修改子节点的 `.grid_cell(...)` 可以将其移动到其他单元格。仅改变集合顺序不会覆盖显式指定的单元格位置。[排列控件](./declarative-ui.mdx)说明组合与稳定键，[演练场](../playground.mdx)提供完整的预设集合。
+
+## 运行完整应用
+
+可运行示例位于 `rs_lvgl_ui` 包中。十个入门示例各展示一种行为；源码位于仓库根目录的 `examples/`，由 `rs_lvgl_ui/Cargo.toml` 以显式所需特性挂到示例目标。范围更大的图集位于 `rs_lvgl_ui/examples/`。
+
+### 准备桌面环境
+
+先按[快速开始](./getting-started.mdx)准备 Rust、C 编译器和 libclang，再安装提供窗口、鼠标和键盘的 SDL2：
+
+<PlatformTabs>
+<PlatformTab label="macOS">
+
+```sh
+brew install sdl2 pkg-config
+```
+
+如果链接器找不到 SDL2，设置它的库目录：
+
+```sh
+export LIBRARY_PATH="$(pkg-config --variable=libdir sdl2)"
+```
+
+</PlatformTab>
+<PlatformTab label="Debian / Ubuntu">
+
+```sh
+sudo apt-get update
+sudo apt-get install g++ pkg-config libsdl2-dev
+```
+
+</PlatformTab>
+</PlatformTabs>
+
+组件工作台包含 Lottie，还需要 C++14 编译器；macOS 的 Xcode 命令行工具和上面的 `g++` 提供这一能力。
+
+### 获取并运行示例
+
+这些命令用于运行仓库里的示例。将库添加到自己的项目时，按[快速开始](./getting-started.mdx)从 crates.io 安装即可。
+
+```sh
+git clone https://github.com/umbrella22/rs_lvgl.git
+cd rs_lvgl
+cargo run -p rs_lvgl_ui --example button_click --features simulator
+```
+
+会打开一个按钮计数器窗口，点击按钮即可增加计数。后续命令均在仓库根目录运行，替换示例名和所需特性即可：
+
+```sh
+cargo run -p rs_lvgl_ui --example <name> --features <features>
+```
+
+`--features` 在 crate 的默认特性之上追加能力。表中的值是各目标声明的完整 `required-features`；下面的命令在保留默认特性时即可运行。如果使用 `--no-default-features` 验证精简构建，需要显式传入每个所需特性。
+
+打开[组件预览](../studio.mdx)，直接体验 WebAssembly 控件交互与动画。桌面版与浏览器版共用同一套 Rust 视图。
+
+以下目标包含显示初始化、事件循环与清理步骤，适合学习状态变化和原生输入。
+
+## 入门示例
+
+| 示例 | 所需特性 | 行为 |
+| --- | --- | --- |
+| `app` | `simulator`、`widget-switch` | 通知开关与保存计数，均由应用状态驱动 |
+| `button_click` | `simulator` | 按钮发送消息，并递增渲染出的计数 |
+| `bar` | `simulator`、`widget-bar` | 进度条与标签共享一个值；按钮推进或重置 |
+| `arc` | `simulator`、`widget-arc` | 可拖动的仪表盘；拖动或 Increase 按钮改变输出值 |
+| `scale` | `simulator`、`widget-scale`、`widget-slider` | 带刻度的标尺与滑块共享数值；Center 设为 50 |
+| `animation` | `simulator` | 圆点的原生 X 动画，通过 Pause 与 Resume 消息控制 |
+| `demo` | `simulator`、`widget-bar` | 显示日期、步数与进度条的表盘 |
+| `sdl` | `simulator` | SDL 鼠标事件触发增减操作 |
+| `sdl_demo` | `simulator`、`components`、`widget-slider`、`widget-switch`、`widget-bar` | Panel 组合音量滑块、开关、进度条与恢复默认值操作 |
+| `rust_timer` | `simulator`、`rust_timer`、`widget-bar` | Rust 单调时钟驱动 LVGL tick 与已用时间显示 |
+
+例如：
+
+```sh
+cargo run -p rs_lvgl_ui --example sdl_demo --features simulator,components,widget-slider,widget-switch,widget-bar
+cargo run -p rs_lvgl_ui --example rust_timer --features simulator,rust_timer,widget-bar
+```
+
+每个入门示例打开一个 640 x 480 的 SDL 窗口，标题为 `rs_lvgl / <名称>`。公共框架显示仓库标识、示例标题、一行说明，以及承载交互内容的表面卡片。默认使用浅色主题。关闭窗口即可退出；清理时程序会打印帧数与节点数。
+
+三个环境变量可以调整运行：
+
+- `EXAMPLE_DARK=1` 选择深色主题。
+- `EXAMPLE_FRAMES=100` 在指定帧数后停止，而不是等待窗口关闭。
+- `EXAMPLE_CAPTURE_DIR=target/captures` 写出初始与最终 PPM 快照。
+
+```sh
+EXAMPLE_DARK=1 EXAMPLE_FRAMES=100 EXAMPLE_CAPTURE_DIR=target/captures cargo run -p rs_lvgl_ui --example app --features simulator,widget-switch
+```
+
+## 公共宿主
+
+十个入门示例共用 `examples/support/mod.rs`。其中的 `run` 函数创建 SDL 窗口与鼠标、初始化 LVGL、挂载 `App`，并执行公共的 `timer_handler`、`drain` 与 `Ui::tick` 序列。每个示例把状态、`Msg` 枚举和视图放在同一个文件。示例旁的测试在内存显示上渲染同一视图并派发原生指针事件，因此交互断言不依赖窗口服务器。
+
+[`button_click.rs`](https://github.com/umbrella22/rs_lvgl/blob/main/examples/button_click.rs) 是完整的状态/消息/视图循环中最小的一个；[`sdl_demo.rs`](https://github.com/umbrella22/rs_lvgl/blob/main/examples/sdl_demo.rs) 展示同一宿主上的组合组件。
+
+## 图集
+
+这些目标覆盖更完整的组件与控件范围。存在聚合特性时，下面的命令使用聚合特性。
+
+| 目标 | 所需特性 | 内容 |
+| --- | --- | --- |
+| `studio` | `showcase` | 完整的 1280 x 860 组件工作台，含九个分类、主题、模态对话框与提示 |
+| `capabilities` | `simulator`、`components`、`input-gridnav`、`widget-canvas`、`widget-qrcode`、`widget-barcode`、`widget-gif`、`widget-lottie`、`widget-ime-pinyin`、`widget-textarea`、`font-cjk-16` | 原生页面切换与可选能力页面 |
+| `widgets_demo` | `simulator`、`widget-arc`、`widget-chart`、`widget-checkbox`、`widget-dropdown`、`widget-image`、`widget-keyboard`、`widget-scale`、`widget-slider`、`widget-switch`、`widget-tabview`、`widget-textarea` | 多标签控件巡览，含分析、商店与键盘状态 |
+| `components` | `simulator`、`components`、`widget-switch` | 面板、列表、导航、对话框与提示 |
+| `gallery` | `simulator`、`widget-slider`、`widget-switch` | 通用组件图集 |
+| `input` | `simulator`、`input-keypad` | 原生窗口中的键盘输入与焦点行为 |
+| `settings` | `widget-slider`、`widget-switch` | 无窗口的内存显示设置页，打印协调计数 |
+
+```sh
+cargo run -p rs_lvgl_ui --example studio --features showcase
+cargo run -p rs_lvgl_ui --example capabilities --features capability-gallery
+cargo run -p rs_lvgl_ui --example widgets_demo --features simulator
+cargo run -p rs_lvgl_ui --example components --features simulator
+cargo run -p rs_lvgl_ui --example gallery --features simulator
+cargo run -p rs_lvgl_ui --example input --features simulator,input-keypad
+cargo run -p rs_lvgl_ui --example settings
+```
+
+`studio` 打开标题为 `rs_lvgl / Component Studio` 的窗口。点击侧栏切换分类，拖动滑块或切换开关；Tab 和 Shift-Tab 移动焦点，Enter 激活控件。`Reset` 恢复当前示例状态并保留分类与主题，`Exit studio` 关闭窗口。`showcase` 包含工作台所需的控件、字体和媒体扩展。
+
+`capability-gallery` 是 `capabilities` 的聚合特性，包含该目标所需的全部能力。`settings` 不打开窗口：它注册 320 x 240 的内存显示，挂载界面，处理四条消息，并在卸载前打印创建、删除与移动的节点数。
+
+![组件工作台总览](https://raw.githubusercontent.com/umbrella22/rs_lvgl/main/docs/images/studio-overview.png)
+
+[组件工作台说明](https://github.com/umbrella22/rs_lvgl/blob/main/docs/component-studio.md)记录九个分类与原生检查。入门示例源码及其公共宿主见 [examples/README.md](https://github.com/umbrella22/rs_lvgl/blob/main/examples/README.md)。
+
+## 工作台的自动运行与截图
+
+需要重复查看全部分类时，可以限制帧数并自动切换：
+
+```sh
+STUDIO_FRAMES=460 STUDIO_AUTORUN=1 cargo run -p rs_lvgl_ui --example studio --features showcase
+```
+
+设置 `STUDIO_CAPTURE_DIR=target/studio-captures` 会输出 PPM 快照。工作台使用合成数据和本地资源，不需要网络服务或应用文件系统。
+
+## 检查原生运行
+
+```sh
+python3 scripts/check-ui-examples.py --artifacts target/ui-audit
+```
+
+在无显示器的 Linux 上，用虚拟显示运行：
+
+```sh
+xvfb-run -a python3 scripts/check-ui-examples.py --artifacts target/ui-audit
+```
+
+该运行器以 `showcase,font-cjk-14,rust_timer` 构建示例，串行执行原生测试，并在入门示例与图集上运行二十个有界原生场景。日志与快照写入 `target/ui-audit`。
+
+这些检查在内存显示上验证真实视图，并单独运行 SDL 冒烟测试。SDL 冒烟只证明原生窗口可以打开和关闭，不模拟操作系统输入，也不代表通过物理板卡验证。

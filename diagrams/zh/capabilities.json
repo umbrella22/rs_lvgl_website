@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "diagram_type": "tree",
+  "meta": {
+    "title": "构建一个应用，需要哪些能力",
+    "locale": "zh-CN",
+    "output": ".archify/tree-capabilities-zh-20261026-163429/capabilities.html",
+    "quality_profile": "showcase"
+  },
+  "layout": {
+    "direction": "right",
+    "nodeW": 180,
+    "nodeMaxW": 240,
+    "gapX": 65,
+    "gapY": 28
+  },
+  "nodes": [
+    {
+      "id": "application",
+      "label": "Rust / LVGL App",
+      "sublabel": "按职责拆解能力"
+    },
+    {
+      "id": "core",
+      "parent": "application",
+      "label": "描述与状态",
+      "sublabel": "声明式基础"
+    },
+    {
+      "id": "layout",
+      "parent": "core",
+      "label": "row / column / grid",
+      "sublabel": "集合顺序决定正常布局次序"
+    },
+    {
+      "id": "basic",
+      "parent": "core",
+      "label": "obj / label / button",
+      "sublabel": "基础构造函数始终可用"
+    },
+    {
+      "id": "state",
+      "parent": "core",
+      "label": "App / View / Ui",
+      "sublabel": "状态、描述、挂载与协调"
+    },
+    {
+      "id": "optional",
+      "parent": "application",
+      "label": "可选能力",
+      "sublabel": "通过 Cargo feature 追加"
+    },
+    {
+      "id": "widgets",
+      "parent": "optional",
+      "label": "widget-*",
+      "sublabel": "开关、图表、输入等控件"
+    },
+    {
+      "id": "composites",
+      "parent": "optional",
+      "label": "components",
+      "sublabel": "面板、列表、导航与弹层"
+    },
+    {
+      "id": "media",
+      "parent": "optional",
+      "label": "Canvas / GIF / Lottie",
+      "sublabel": "图形、动画与编码扩展"
+    },
+    {
+      "id": "focus",
+      "parent": "optional",
+      "label": "keypad / gridnav",
+      "sublabel": "键盘、编码器与方向导航"
+    },
+    {
+      "id": "platform",
+      "parent": "application",
+      "label": "平台接入",
+      "sublabel": "应用运行环境负责"
+    },
+    {
+      "id": "display",
+      "parent": "platform",
+      "label": "Display / Input",
+      "sublabel": "像素输出与原生输入设备"
+    },
+    {
+      "id": "time",
+      "parent": "platform",
+      "label": "tick / timer / drain",
+      "sublabel": "推进时间、消息与画面"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "连线表示归属",
+      "items": [
+        "这是职责与能力地图，不是调用顺序，也不是精确的 Cargo 依赖图。",
+        "use 只导入名称；widget-*、components 和输入特性才选择相应能力。"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "原生依赖与 Rust 接口",
+      "items": [
+        "widget-slider 需要原生 bar；要使用 bar()，仍需选择 widget-bar。",
+        "底层 rs_lvgl_sys 提供 C 与 FFI；rs_lvgl 提供类型化封装；rs_lvgl_ui 负责声明式组合。"
+      ]
+    }
+  ]
+}

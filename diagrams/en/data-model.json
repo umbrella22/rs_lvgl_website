@@ -1,0 +1,184 @@
+{
+  "schema_version": 1,
+  "diagram_type": "class",
+  "meta": {
+    "title": "State, messages and view ownership",
+    "locale": "en",
+    "output": ".archify/class-data-model-en-20261026-163429/data-model.html",
+    "quality_profile": "showcase"
+  },
+  "layout": {
+    "mode": "grid",
+    "gapX": 105,
+    "gapY": 120
+  },
+  "types": [
+    {
+      "id": "settings",
+      "label": "Settings",
+      "kind": "record",
+      "sublabel": "Application-owned state",
+      "row": 0,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        },
+        {
+          "name": "changes",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "id": "app",
+      "label": "App",
+      "kind": "interface",
+      "sublabel": "Rust trait implemented by the app",
+      "row": 0,
+      "col": 1,
+      "methods": [
+        {
+          "name": "update",
+          "parameters": "Msg"
+        },
+        {
+          "name": "view",
+          "parameters": "&Theme",
+          "returns": "View<Msg>"
+        }
+      ]
+    },
+    {
+      "id": "ui",
+      "label": "Ui<M>",
+      "kind": "record",
+      "sublabel": "Mounted objects, theme and queue",
+      "row": 0,
+      "col": 2,
+      "methods": [
+        {
+          "name": "mount",
+          "parameters": "&A"
+        },
+        {
+          "name": "drain",
+          "parameters": "&mut A, usize"
+        }
+      ]
+    },
+    {
+      "id": "message",
+      "label": "Message",
+      "kind": "enum",
+      "sublabel": "Input intent, not stored state",
+      "row": 1,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "Enabled(bool)"
+        },
+        {
+          "name": "Reset"
+        }
+      ]
+    },
+    {
+      "id": "view",
+      "label": "View<M>",
+      "kind": "record",
+      "sublabel": "Alias for Node<M>: a description",
+      "row": 1,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "key",
+          "type": "Key"
+        },
+        {
+          "name": "kind",
+          "type": "WidgetKind"
+        },
+        {
+          "name": "children",
+          "type": "Vec<Node<M>>"
+        },
+        {
+          "name": "handlers",
+          "type": "HandlerSet<M>"
+        }
+      ]
+    },
+    {
+      "id": "theme",
+      "label": "Theme",
+      "kind": "record",
+      "sublabel": "Owned by Ui, borrowed by view",
+      "row": 1,
+      "col": 2
+    }
+  ],
+  "relationships": [
+    {
+      "id": "implements",
+      "from": "settings",
+      "to": "app",
+      "kind": "realization",
+      "label": "impl App"
+    },
+    {
+      "id": "handles",
+      "from": "settings",
+      "to": "message",
+      "kind": "dependency",
+      "label": "handles"
+    },
+    {
+      "id": "describes",
+      "from": "app",
+      "to": "view",
+      "kind": "dependency",
+      "label": "view()"
+    },
+    {
+      "id": "borrows",
+      "from": "ui",
+      "to": "app",
+      "kind": "dependency",
+      "label": "borrows app"
+    },
+    {
+      "id": "owns-theme",
+      "from": "ui",
+      "to": "theme",
+      "kind": "composition",
+      "label": "owns"
+    },
+    {
+      "id": "emits",
+      "from": "view",
+      "to": "message",
+      "kind": "dependency",
+      "label": "event mapping"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Who owns the data",
+      "items": [
+        "Settings stores enabled and changes; Ui::drain borrows the app to handle messages.",
+        "Ui stores the theme, queue and mounted tree; it does not take ownership of Settings."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Description and native objects",
+      "items": [
+        "View is a Rust description value; constructing it creates no LVGL objects.",
+        "Only relevant members are shown with abbreviated signatures. Constructors and modifiers configure View fields."
+      ]
+    }
+  ]
+}

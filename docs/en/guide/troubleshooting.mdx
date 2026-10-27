@@ -1,0 +1,318 @@
+---
+title: Troubleshooting
+description: Locate Rust compilation, view validation and rendering errors, then diagnose native toolchains, capabilities, fonts, display flushes and teardown.
+---
+
+import { ConceptDiagram } from '../../../components/ConceptDiagram';
+
+# Troubleshooting
+
+Start with the first error. A missing compiler, unavailable widget constructor and frozen interface need different fixes; later errors often follow from the same cause.
+
+| Symptom | Start here |
+| --- | --- |
+| Run is unavailable in the playground | Open **Run settings**. Browser runs supported syntax directly; Local Rust compiler requires the service's printed URL. |
+| `Unable to find libclang` | Check the C toolchain and libclang installation |
+| Missing constructor or configuration conflict | Check Cargo features and the effective `lv_conf.h` |
+| Successful build, missing text | Check glyph coverage and font descriptors |
+| Widgets render but state or animation does not change | Check ticks, timer dispatch and `Ui::drain` |
+| Crash during exit or cleanup | Check mounted trees, display aliases and unfinished flushes |
+
+## Identify the playground error stage
+
+The [playground](../playground.mdx) reports errors at the stage that failed. Browser mode checks supported syntax, evaluates the app, validates the view and renders it. Local compiler mode also provides rustc diagnostics.
+
+<ConceptDiagram kind="errors" />
+
+| Observed result | What to check |
+| --- | --- |
+| Rust diagnostic with a line and column | Fix the reported syntax, type or missing API. For an unavailable constructor, check the current API version and selected features. |
+| `DuplicateKey` while mounting | Give each explicitly keyed sibling a distinct stable key. Keys may repeat under different parents. |
+| `InvalidProperty` while mounting | Check that the property fits the widget, children belong to a container, and grid or range values satisfy the API contract. |
+| Native execution fails or times out | Check the snippet for a panic, loop or expensive work before it returns its view. The view function must finish so LVGL can render it. |
+| The last working preview remains visible | This is the last working interface. The status indicates pending edits; fix the error and run again to replace it. |
+| Local service is unavailable | Start `npm --prefix website run playground` from the repository root and use the local URL it prints. Or switch to Browser mode for [supported Rust syntax](./browser-playground.mdx), which needs no service. |
+
+Fix the first reported error and run again. Compiler source spans identify Rust source locations; a view-validation failure describes the invalid tree and may not have a source span. For mouse, keyboard or animation behavior in a running application, use the [SDL examples](./examples.mdx).
+
+## Toolchain and bindgen
+
+The build compiles C and generates bindings in one pass. A missing C compiler
+fails during compilation. A missing or unloadable libclang fails when bindgen
+loads it, before header parsing: the common panic is `Unable to find libclang`,
+followed by a clang-sys message that lists the searched shared libraries and
+points to `LIBCLANG_PATH`. The `Unable to generate LVGL 9.6 bindings` message is
+the build script's wrapper for a bindgen `generate()` error after libclang has
+loaded, such as a header or clang-argument failure. Do not expect that wrapper
+text when the library cannot be found.
+
+- Install a C toolchain plus libclang. Debian and Ubuntu use `build-essential`,
+  `clang` and `libclang-dev`; macOS uses the Xcode Command Line Tools.
+- If libclang is installed outside the default loader path, point bindgen at it
+  with `LIBCLANG_PATH`. This variable belongs to bindgen, not to
+  `rs_lvgl_sys`.
+- The Lottie extension also needs a C++14 compiler and runtime. Install `g++` on
+  Linux or use the platform C++ toolchain.
+- A cross build needs a target C compiler and its sysroot as well as host
+  libclang. Set `CC_<target>` and `AR_<target>` for cc-rs (replace dashes in the
+  target name with underscores). `LVGL_SYSROOT` only appends `<value>/include`
+  to the bindgen clang arguments; it is not validated and is not passed to the
+  C compiler, so configure the compiler's sysroot separately.
+
+A successful host build does not verify the target compiler, target sysroot
+headers or target ABI.
+
+## Configuration paths
+
+Only these three inputs are validated as absolute existing paths before
+compilation. The message names the input:
+
+| Diagnostic | Remedy |
+| --- | --- |
+| `LVGL_CONFIG_PATH must be an absolute path; use Cargo [env] relative = true` | Put the value in `.cargo/config.toml` with `relative = true`, or pass an absolute path in the environment. |
+| `LVGL_CONFIG_PATH must name an existing file` | Fix the path or create the header. The same pattern applies to `LVGL_EXTRA_C_DIR` (directory) and `LVGL_EXTRA_HEADERS` (files). |
+| `native header paths must be valid UTF-8` | Move the header to a UTF-8 path. |
+| `native header path cannot be represented in a C include directive` | Remove quotes and line breaks from the path. |
+| `LVGL_EXTRA_C_DIR` was given a file | Pass the directory that contains the sources; the build scans `.c` files recursively. |
+| Multi-header `LVGL_EXTRA_HEADERS` was given one relative entry | Provide each header as an absolute path, joined with the platform path separator. |
+
+A stale shell variable wins over `[env]` unless Cargo uses `force = true`.
+Inspect `OUT_DIR/conf/lv_conf.h` to see which header the build actually used,
+and check the include line written there for the selected path.
+
+`LVGL_CFLAGS` and `LVGL_SYSROOT` do not pass through this path validation. A
+wrong `LVGL_SYSROOT` usually appears as missing target standard headers in the
+bindgen diagnostics.
+
+## Capability conflicts
+
+When an application header is authoritative, requested Cargo features must exist
+in its effective macros. The build stops with:
+
+```text
+LVGL_CONFIG_PATH conflicts with a requested Cargo capability: LV_USE_SLIDER must be enabled
+```
+
+Enable the macro in the header, or remove the Cargo feature that requests it.
+Do not disable validation or edit generated bindings. The same check covers
+fonts (`LV_FONT_MONTSERRAT_28`), extensions and `LV_USE_SDL`.
+
+Native dependencies must be valid in the same header. For `widget-slider`, enable
+`LV_USE_SLIDER` and `LV_USE_BAR`; for `widget-keyboard`, enable
+`LV_USE_KEYBOARD`, `LV_USE_BUTTONMATRIX` and `LV_USE_TEXTAREA`. The default
+feature path closes these dependencies automatically; an application header does
+not.
+
+If a typed API disappears, for example Rust reports a missing `Slider` type in
+`widgets`, the effective configuration disabled the widget or the feature was not
+selected. The C library can still compile a dependency that another widget
+requested; the typed wrapper exists only with that feature.
+
+For `rs_lvgl_ui`, keep the core object, label and button classes, Montserrat 14,
+and each selected UI capability. A header that removes them is not a valid UI
+configuration even if the raw build succeeds.
+
+## SDL failures
+
+The `sdl` feature requires SDL2 discovery at build time. Without it the build
+panics with a message that names the missing dependency and suggests the package
+names. Install SDL2 and pkg-config, then confirm:
+
+```sh
+pkg-config --cflags --libs sdl2
+```
+
+The fallback probe uses `sdl2-config`. On macOS, the linker may need the library
+directory explicitly:
+
+```sh
+LIBRARY_PATH="$(pkg-config --variable=libdir sdl2)" cargo test -- --test-threads=1
+```
+
+Two configuration mismatches are reported separately:
+
+- A header that enables `LV_USE_SDL` without the Cargo `sdl` feature fails with
+  `LVGL_CONFIG_PATH enables LV_USE_SDL; also enable the sdl Cargo feature for native linking`.
+- The `sdl` feature with a header that leaves `LV_USE_SDL` off fails the
+  capability check.
+
+The simulator uses LVGL's SDL backend, not the Rust `sdl2` crate. A working Rust
+`sdl2` dependency is neither required nor does it show that the native backend
+is configured correctly.
+
+## Missing symbols
+
+A declaration in `LVGL_EXTRA_HEADERS` only makes a function visible to Rust. The
+implementation must be compiled from `LVGL_EXTRA_C_DIR` (or the application's
+native build). A linker error such as
+`undefined reference to application_value`, or `Undefined symbols for architecture
+arm64` on macOS, means the declaration and the implementation were not linked
+together.
+
+- Place `.c` implementations under the extra source directory. The scan is
+  recursive and also watches added or removed files.
+- Add generated font sources there as well; a declared `application_font` needs
+  its defining translation unit.
+- The extra directory compiles `.c` only. Application C++ sources need separate
+  build integration; Lottie's bundled ThorVG is compiled by the crate itself.
+- A raw use of `lv_font_montserrat_28` without enabling
+  `LV_FONT_MONTSERRAT_28` in the effective header produces an undefined symbol.
+  Enable the font in the header or select the matching feature.
+- Do not add a second LVGL library to satisfy missing symbols. This provider is
+  vendored; an external prebuilt LVGL has no verified ABI and can duplicate
+  symbols or mix configurations.
+
+For C++ link failures, confirm the target C++ runtime and standard library are
+available to the final link, not only to the C compiler.
+
+## Fonts
+
+`rs_lvgl_ui::Font::montserrat_14()` is unconditional. Every other
+`Font::montserrat_<size>` exists only for a selected `font-montserrat-<size>`
+feature. A missing method is a feature-selection error; adding a raw symbol
+reference does not create the Rust method. Without `font-montserrat-28`, the UI
+themes use Montserrat 14 for titles.
+
+`rs_lvgl::font::Font` is a separate type: it wraps an `lv_font_t` value through
+`new_raw`, and its built-in helpers require the `nightly` feature.
+
+CJK text needs `font-cjk-14` or `font-cjk-16` and the matching
+`Font::cjk_14()` or `Font::cjk_16()`. Montserrat does not contain those glyphs,
+and a missing glyph renders as a fallback or blank.
+
+A custom font links but renders blank or malformed text when its descriptor is
+incomplete. `Font::from_raw` does not validate it:
+
+- Use a complete LVGL 9.6 descriptor generated by the matching font converter.
+- Keep the glyph tables and callbacks static and alive for every object that
+  uses the font. LVGL stores the pointer in styles.
+- Compile the generated `.c` file under `LVGL_EXTRA_C_DIR` and declare the
+  symbol in `LVGL_EXTRA_HEADERS`.
+- Include the built-in symbol glyphs if the UI uses `rs_lvgl_ui::symbol`;
+  custom fonts do not inherit them.
+
+Do not manufacture a descriptor at runtime and cast it to `lv_font_t`. The host
+tests link a font symbol and inspect its `line_height`; they do not show that
+glyphs render.
+
+## Rendering does not advance
+
+LVGL advances timers, animations and input processing only when the platform
+supplies time and dispatch:
+
+- Feed the tick. Call `rs_lvgl::tick_inc` with the `Duration` elapsed since the
+  previous call, read from a monotonic clock. A periodic source passes its known
+  interval; a variable loop passes each measured duration, so a long frame does
+  not lose time. `tick_inc` forwards whole milliseconds. Alternatively enable
+  `rust_timer` and call `rs_lvgl::timer::update_clock` with
+  `LvClock::since_init` returning monotonic elapsed time; it installs
+  `lv_tick_set_cb`, and `lv_tick_get` then reads that callback instead of the
+  increments. Use one source.
+- Dispatch timers. Call `rs_lvgl::task_handler()` or `Ui::timer_handler()`.
+  `Ui::timer_handler` is a thin wrapper over `lv_timer_handler`.
+- Apply queued messages. Native callbacks enqueue only; `Ui::drain` runs
+  `App::update` and reconciles. A loop that calls `timer_handler` without
+  `drain` leaves the UI unchanged.
+- Advance custom widgets. `Ui::tick(elapsed_ms)` walks lifecycle custom widgets;
+  pass the same measured milliseconds used for the tick. `lv_timer_handler`
+  does not call their `update` hook.
+
+`Ui::drain` returns early when no message was processed and nothing marked the
+UI dirty. State read outside messages (a clock or sensor in `App::view`) needs
+`Ui::mark_dirty()` or `Ui::update(&app)`. The returned `DrainStats` reports
+whether reconciliation happened and how many messages were dropped.
+
+Reentrant calls are rejected. A nested `Ui::timer_handler` returns `0`, and
+other reentrant `Ui` calls return `UiError::Reentrant`. C callbacks must not call
+`Ui` methods, block, panic or delete native objects. A panic in an `extern "C"`
+callback aborts the process.
+
+## Display flush and format
+
+`Display::register` renders RGB888. Its buffer capacity must cover at least one
+aligned display row, and the callback receives only the active area pixels. A
+capacity of zero, an invalid dimension or a buffer smaller than the aligned row
+returns `DisplayError::FailedToRegister`; increase `N` or use a full-frame
+buffer.
+
+`Display::register_raw` follows the configured format. Its callback must:
+
+- honor the actual color format, area and stride, including row padding;
+- copy or transfer only the valid region;
+- call `lv_display_flush_ready` after the transfer, including on error paths that
+  keep the display alive;
+- not unwind or block indefinitely.
+
+The safe constructor calls `lv_display_flush_ready` after its Rust callback
+returns. A long-running callback still stalls the UI thread. For asynchronous
+transfers, do not reuse the buffer until the flush is reported ready.
+
+If SDL closes its window inside `timer_handler`, the native display can be
+deleted during dispatch. Check `lv_display_get_default()` before draining queued
+updates and stop the loop when it is null. The examples use this guard before
+touching UI handles.
+
+## Teardown and aliases
+
+Dropping a `Display` handle does not delete the native display, and it is not a
+teardown step. `Display` does not implement `Drop`; its buffer, flush callback,
+screen and aliases remain alive until the native display is deleted.
+
+`Display::delete(self)` and `rs_lvgl::deinit` are unsafe. Their safety
+conditions are the prerequisites below, not a recipe that makes the calls safe:
+
+1. Stop rendering, asynchronous draws, DMA or GPU work and pending flushes.
+2. For a mounted typed UI, call `Ui::unmount()` to remove its tree and input
+   bindings, then destroy input-device handles so their native devices are
+   deleted.
+3. Ensure no screen, widget, animation, callback or other display alias can be
+   used afterwards.
+
+Deleting a display while an alias or mounted tree remains is a use-after-free,
+not a recoverable error. Do not silence it with `mem::forget` on UI handles:
+the native objects are still freed. For the same reason, do not call
+`rs_lvgl::deinit()` while any LVGL handle or callback can still run. Completing
+the steps does not prove that the conditions hold; do not call either operation
+when aliases, callbacks or pending transfers cannot be ruled out.
+
+`lv_init` resets the native tick callback. `rust_timer::update_clock` registers
+it again on every update, which covers deinitialization and a new initialization
+cycle. A cached external registration flag does not.
+
+Custom memory must use a matching allocator. With `lvgl_alloc`, Rust allocations
+come from LVGL; releasing them through another allocator, or releasing LVGL
+objects through Rust's allocator, breaks the heap. With the default CLIB
+allocator, LVGL's heap monitor does not observe libc allocations.
+
+## Rebuild and environment confusion
+
+The build watches the active configuration, application headers and their
+includes, the extra source directory, extra headers and relevant environment
+variables. A configuration change should rebuild `rs_lvgl_sys` and the dependent
+wrapper generation.
+
+- Confirm which header is active by reading `OUT_DIR/conf/lv_conf.h`. Its first
+  line includes the selected application header when one is configured.
+- Check that the process environment does not override `.cargo/config.toml`.
+- Compare builds only when they use the same `CARGO_TARGET_DIR`; separate target
+  directories hold separate generated configurations.
+- A header generated under `OUT_DIR` is deliberately not watched as a new input;
+  changing its generator still rebuilds it.
+- If a stale build is suspected, inspect the watched inputs before forcing a
+  rebuild. A blanket `cargo clean` discards diagnostics and hides a missing
+  watch rule.
+
+## Diagnostic checks
+
+```sh
+cargo build
+cargo test -p rs_lvgl_sys --test build_script -- --test-threads=1
+python3 scripts/check-native-inputs.py --artifacts target/native-input-audit
+```
+
+The build-script tests cover configuration patching, capability validation and
+RISC-V ABI selection. The native runner covers custom configuration, C sources,
+fonts, path failures, cache reuse, interrupted compilation, output isolation and
+an unpacked crate. These checks run on the host. Board display, hardware tick,
+input delivery, DMA teardown and external-provider ABI need separate
+verification on the target or hardware.

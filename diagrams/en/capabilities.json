@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "diagram_type": "tree",
+  "meta": {
+    "title": "Capabilities that make an application",
+    "locale": "en",
+    "output": ".archify/tree-capabilities-en-20261026-163429/capabilities.html",
+    "quality_profile": "showcase"
+  },
+  "layout": {
+    "direction": "right",
+    "nodeW": 180,
+    "nodeMaxW": 240,
+    "gapX": 65,
+    "gapY": 28
+  },
+  "nodes": [
+    {
+      "id": "application",
+      "label": "Rust / LVGL App",
+      "sublabel": "Capabilities by responsibility"
+    },
+    {
+      "id": "core",
+      "parent": "application",
+      "label": "Views and state",
+      "sublabel": "Declarative foundation"
+    },
+    {
+      "id": "layout",
+      "parent": "core",
+      "label": "row / column / grid",
+      "sublabel": "Collection order drives normal flow"
+    },
+    {
+      "id": "basic",
+      "parent": "core",
+      "label": "obj / label / button",
+      "sublabel": "Base constructors always available"
+    },
+    {
+      "id": "state",
+      "parent": "core",
+      "label": "App / View / Ui",
+      "sublabel": "State, descriptions, reconciliation"
+    },
+    {
+      "id": "optional",
+      "parent": "application",
+      "label": "Optional capabilities",
+      "sublabel": "Added through Cargo features"
+    },
+    {
+      "id": "widgets",
+      "parent": "optional",
+      "label": "widget-*",
+      "sublabel": "Switches, charts and inputs"
+    },
+    {
+      "id": "composites",
+      "parent": "optional",
+      "label": "components",
+      "sublabel": "Panels, lists, navigation, overlays"
+    },
+    {
+      "id": "media",
+      "parent": "optional",
+      "label": "Canvas / GIF / Lottie",
+      "sublabel": "Graphics, motion and code extensions"
+    },
+    {
+      "id": "focus",
+      "parent": "optional",
+      "label": "keypad / gridnav",
+      "sublabel": "Keypad, encoder and navigation"
+    },
+    {
+      "id": "platform",
+      "parent": "application",
+      "label": "Platform integration",
+      "sublabel": "Provided by the application host"
+    },
+    {
+      "id": "display",
+      "parent": "platform",
+      "label": "Display / Input",
+      "sublabel": "Pixel output and native input"
+    },
+    {
+      "id": "time",
+      "parent": "platform",
+      "label": "tick / timer / drain",
+      "sublabel": "Advance time, messages and drawing"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Lines mean containment",
+      "items": [
+        "This is a capability map, not execution order or an exact Cargo dependency graph.",
+        "use imports names. widget-*, components and input features select capabilities."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Native dependencies and Rust APIs",
+      "items": [
+        "widget-slider needs native bar; using bar() still requires widget-bar.",
+        "rs_lvgl_sys supplies C/FFI, rs_lvgl supplies typed wrappers, and rs_lvgl_ui supplies declarative composition."
+      ]
+    }
+  ]
+}

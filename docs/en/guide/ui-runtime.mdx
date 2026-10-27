@@ -1,0 +1,157 @@
+---
+title: Mount and update
+description: Mount an App on a display, drive messages and timing in the platform loop, and unmount before native display teardown.
+---
+
+import { GuideLinks } from '../../../components/GuideLinks';
+
+# Mount and update
+
+Browser previews and SDL examples already provide an event loop. On your own device, create a `Ui` on the display, mount the app, then process input and updates. The native display must remain valid for the entire mounted lifetime.
+
+## State and view
+
+The `App` trait has one message type, a state transition and a view:
+
+- `type Msg: Clone + 'static`
+- `fn update(&mut self, msg: Self::Msg)`
+- `fn view(&self, theme: &Theme) -> View<Self::Msg>`
+- `fn overlay(&self, theme: &Theme) -> Option<View<Self::Msg>>` (optional)
+
+`update` changes state and does not touch LVGL or block. `view` reads state and returns a new tree; it must not mutate state. Click handlers store the message and clone it for each click, so messages implement `Clone`.
+
+```rust
+use rs_lvgl_ui::prelude::*;
+
+#[derive(Clone)]
+enum Msg {
+    Increment,
+    Decrement,
+    Reset,
+}
+
+struct Counter {
+    value: i32,
+}
+
+impl App for Counter {
+    type Msg = Msg;
+
+    fn update(&mut self, msg: Msg) {
+        match msg {
+            Msg::Increment => self.value += 1,
+            Msg::Decrement => self.value -= 1,
+            Msg::Reset => self.value = 0,
+        }
+    }
+
+    fn view(&self, theme: &Theme) -> View<Msg> {
+        column([
+            label("Counter").style(Style::title(theme)),
+            row([
+                label(format!("{}", self.value))
+                    .key(Key::Named("value"))
+                    .style(Style::title(theme).flex_grow(1)),
+                button("+1")
+                    .key(Key::Named("increment"))
+                    .style(Style::accent(theme))
+                    .on_click(Msg::Increment),
+                button("-1")
+                    .key(Key::Named("decrement"))
+                    .on_click(Msg::Decrement),
+            ])
+            .style(Style::surface(theme).width(Size::Percent(100)).gap(12)),
+            button("Reset")
+                .key(Key::Named("reset"))
+                .on_click(Msg::Reset),
+        ])
+        .style(Style::screen(theme).pad(16).gap(12))
+    }
+}
+```
+
+The snippet covers the `App` implementation only. The view is pure: `Counter` is borrowed immutably and every button sends a message instead of changing state. `Style::screen` fills the display, the row uses a themed surface, the value label grows into the free space, and the `+1` button uses the flat accent preset. A runnable program with the same structure, including display registration, drain calls and teardown, is [rs_lvgl_ui/examples/settings.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/settings.rs).
+
+## Mount on a display and drive updates
+
+The platform handles display and input registration. It creates a `Ui` on a live display, mounts the first view, and then drives three calls:
+
+```rust
+let mut ui = Ui::new(&display, Theme::dark())?;
+let mut app = Counter { value: 0 };
+ui.mount(&app)?;
+
+loop {
+    ui.timer_handler(); // dispatch native timers and input callbacks
+    ui.drain(&mut app, 32)?; // App::update per message, then one view/reconcile
+    ui.tick(elapsed_ms)?; // custom-widget lifecycle updates only
+}
+```
+
+The loop body is the reusable part; `display`, `elapsed_ms` and frame pacing belong to the platform around this fragment. `Ui::drain` processes at most the requested number of messages and then reconciles once if it processed a message, a theme change or `mark_dirty` set the dirty flag, or no tree is mounted. An idle drain does not call `App::view`. State changed outside the message path, such as a clock or a sensor read in `view`, needs `Ui::update(&app)` or `Ui::mark_dirty()`.
+
+`timer_handler` wraps `lv_timer_handler` and returns its result. Event callbacks from this layer enqueue messages, and the next `drain` applies them. Other native timers run by the same call, such as animations or platform timers, execute LVGL code directly; they follow the same single-thread rule. `tick(elapsed_ms)` advances lifecycle custom widgets and does not rebuild descriptors. A nested `timer_handler` call returns `0`, and nested mutation returns `UiError::Reentrant`.
+
+The message queue is bounded. `Ui::new` uses `DEFAULT_QUEUE_CAPACITY` (64) and `Ui::with_capacity` takes an explicit size; a full queue drops its oldest message and increments the dropped counter. `Ui::post` adds a message from platform code. `DrainStats` reports `processed`, `dropped` and whether the call `reconciled`; `Ui::stats` reports cumulative counters.
+
+`Ui` is neither `Send` nor `Sync`. All UI methods and LVGL access stay on the UI thread, and the crate never registers displays, inputs, timers or RTOS tasks. A platform that renders while messages arrive must serialize those operations on that thread.
+
+## Handle update errors
+
+Descriptor validation runs before mutation. It rejects duplicate sibling keys, out-of-range values, label text with an interior NUL, children on non-containers, invalid scroll offsets and unsupported event targets. A validation failure leaves the mounted tree unchanged.
+
+After validation, an LVGL allocation failure during creation or update returns `UiError::Allocation` and deletes the affected partial subtree. The next `update`, `mount` or `drain` recreates it from `App::view`. `UiError` also has `DisplayUnavailable` for a display without an active screen and `Reentrant` for a mutation made from inside an active UI method.
+
+The crate is `no_std` outside tests and requires `alloc`; `no_std` does not mean allocation-free. `View` values use `String`, `Vec` and boxed handlers, and the UI queue and roots allocate. The `alloc` feature enables the allocator-aware parts of the `rs_lvgl` dependency. The target supplies the allocator. LVGL allocation failures are reported as the `Allocation` error above.
+
+## `no_std` and allocation
+
+- `rs_lvgl` and `rs_lvgl_ui` compile as `no_std` outside tests. `std` appears in the host examples and their event loops, not in the library requirement.
+- `no_std` does not mean allocation-free. The UI layer always requires `alloc`, and the `alloc` feature enables the allocator-aware APIs in `rs_lvgl`. The target must provide a working allocator.
+- LVGL's default configuration uses the CLIB allocator. Enabling `lvgl_alloc` routes Rust's global allocation through `lv_malloc` and `lv_free`; an object's allocation and release must use the same policy.
+- A bare-metal target enables `no-autoinit` and calls `rs_lvgl::init()` before creating a display. `rs_lvgl_ui` never registers displays, input devices, timers or RTOS tasks; the platform supplies those and drives `timer_handler`, `drain` and `Ui::tick`.
+
+```toml
+rs_lvgl = { path = "../rs_lvgl/rs_lvgl", default-features = false, features = ["alloc"] }
+[dependencies.rs_lvgl_ui]
+path = "../rs_lvgl/rs_lvgl_ui"
+default-features = false
+features = [
+    "alloc", "no-autoinit", "components", "widget-slider", "font-montserrat-16",
+]
+```
+
+## Unmount and release resources
+
+`Ui::unmount` deletes the mounted view and overlay, releases the focus group and detaches its input devices while the display, its screen and those devices are still live. The native display must outlive the UI tree, so unmount before any native teardown:
+
+```rust
+ui.unmount();
+drop(ui);
+```
+
+[settings.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/settings.rs) runs this sequence before it deletes its memory display; [components.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/components.rs) ends the SDL application through `deinit`. Display registration and lifetime are covered in [Native integration](./native-integration.mdx).
+
+Calling `Ui::unmount` keeps the order explicit: the view, overlay and focus group are removed while the display is known to be alive. Dropping a mounted `Ui` also deletes its root and focus group, but the drop then depends on surrounding scope order, which may place display deletion first; keep the explicit `unmount` when controlling teardown. An unmounted `Ui` holds no native state, so it can be dropped afterwards. A later `mount` creates a fresh root, and input devices must be bound again. A mounted `Ui` must not outlive the native display, because its destructor calls into LVGL.
+
+Dropping a `Display` handle does not delete the native display. The handle is an alias: the display, its screen objects, flush callback and buffer stay registered until native deletion. Dropping the last handle leaves the display registered; its callback and buffer are then released by `deinit` or by whatever native code deletes it, not by the handle. Unmount the UI tree before either release path as well. After the handle is gone, an already unmounted `Ui` remains inert and can be dropped.
+
+`Display::delete` and `rs_lvgl::deinit` are unsafe; the two-line snippet above is not a teardown recipe for them. Before either call:
+
+- Every `Ui` is unmounted, and every other display alias, screen, widget, animation and input device that can reach the display is released or invalidated.
+- Rendering has finished, including asynchronous draw workers, DMA or GPU transfers and pending flushes.
+- No render, flush, timer, event or input callback is in progress, and no destructor or deletion callback refreshes, uses or recursively deletes the display or calls `deinit`.
+- After `Display::delete`, no alias, screen, widget or callback may access the display. After `deinit`, existing LVGL values must not be accessed even after `init()`, including through their destructors.
+
+## Runnable example
+
+[settings.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/settings.rs) is a complete host example with the same structure: it registers an off-screen 320 x 240 memory display, creates a `Ui`, mounts a settings screen, posts four messages, drains them, prints the mounted node and reconcile counters, asserts the resulting state, then unmounts and deletes the display. It uses no raw pointers and no `rs_lvgl_sys` calls.
+
+```sh
+cargo run -p rs_lvgl_ui --example settings
+```
+
+The example target requires `widget-slider` and `widget-switch`; the default feature set includes both. A reduced build enables those two features explicitly. The memory display draws off screen, so the command does not open a window.
+
+
+<GuideLinks items={["device", "events"]} />

@@ -1,0 +1,24 @@
+[
+  {
+    "text": "指南",
+    "link": "/guide/getting-started",
+    "activeMatch": "/guide/"
+  },
+  {
+    "text": "组件预览",
+    "link": "/studio"
+  },
+  {
+    "text": "演练场",
+    "link": "/playground"
+  },
+  {
+    "text": "示例",
+    "link": "/guide/examples"
+  },
+  {
+    "text": "GitHub",
+    "link": "https://github.com/umbrella22/rs_lvgl",
+    "position": "right"
+  }
+]

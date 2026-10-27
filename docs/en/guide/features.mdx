@@ -1,0 +1,243 @@
+---
+title: Choose widgets and fonts
+description: Select LVGL widgets, fonts, media extensions and input with Cargo features, and check native dependencies and application headers.
+---
+
+import { ArchifyDiagram } from '../../../components/ArchifyDiagram';
+import { ConceptDiagram } from '../../../components/ConceptDiagram';
+import { GuideLinks } from '../../../components/GuideLinks';
+
+# Choose widgets and fonts
+
+The default configuration is useful for trying examples. For a device build, disable the defaults and enable the widgets and fonts the interface needs. A Rust `use` statement imports a name; enabling a widget requires a Cargo feature.
+
+## Select features for a settings screen
+
+Suppose the screen uses a list, slider and switch, with Montserrat 20 text. This configuration retains allocation and composite components, then selects those widgets and the font. The path assumes an application beside the repository directory.
+
+```toml
+[dependencies]
+[dependencies.rs_lvgl_ui]
+path = "../rs_lvgl/rs_lvgl_ui"
+default-features = false
+features = [
+    "alloc", "components", "widget-slider", "widget-switch",
+    "font-montserrat-20",
+]
+```
+
+The build includes the native bar code required by a slider, but does not expose the Rust `bar(...)` constructor. Add `widget-bar` to use a progress bar directly. If another dependency still enables the defaults, Cargo merges those features into the build too.
+
+## What the defaults compile
+
+With no application header, the build compiles the vendored LVGL configuration.
+That header enables the core widget set (optional media and input extensions
+remain off), Montserrat 12, 14, 16, 28 and 48, uses the CLIB allocator, and
+leaves SDL and logging off.
+
+The crate defaults differ:
+
+| Crate | Default features | Result |
+| --- | --- | --- |
+| `rs_lvgl` | `embedded_graphics`, `drivers` | Handwritten widgets, display, input and legacy compatibility modules. On its own it does not select `minimal-config`, so the vendored full configuration remains active. |
+| `rs_lvgl_ui` | `alloc`, `components`, `widgets-all`, `fonts-vendored` | Declarative UI, composite components, the core typed widget set, and Montserrat 12, 16, 28 and 48. |
+
+`rs_lvgl_ui` always activates `rs_lvgl_sys/minimal-config` for its dependency.
+That feature makes the default vendored header start from a small selection, not
+the full configuration. `widgets-all` then adds the typed widgets back, so the
+default UI build still exposes the core set. Target builds
+disable default features and select only what they use.
+
+Montserrat 14 and the core object, label and button classes are always present.
+`rs_lvgl_ui::Font::montserrat_14()` is unconditional; other Montserrat methods
+exist only with their feature.
+
+## Widgets and fonts
+
+`rs_lvgl_ui` maps optional widgets to `widget-<name>` features. The typed
+constructor, its `WidgetKind` variant and widget-specific modifiers exist only
+when that feature is selected. Native dependencies are enabled automatically:
+
+| Feature | Also enables natively |
+| --- | --- |
+| `widget-keyboard` | button matrix, textarea |
+| `widget-calendar` | button matrix |
+| `widget-slider` | bar |
+| `widget-spinbox` | textarea |
+| `widget-spinner` | arc |
+| `widget-animimage`, `widget-msgbox`, `widget-canvas` | image |
+| `widget-qrcode` | canvas, image |
+| `widget-barcode` | canvas, image |
+| `widget-gif` | image and the GIF decoder |
+| `widget-lottie` | canvas, image, vector graphics, matrix, float, internal ThorVG |
+| `widget-ime-pinyin` | keyboard, button matrix, textarea |
+
+Native dependencies compile in C even when their typed feature is absent. For
+example, `widget-slider` brings in `LV_USE_BAR`, but `bar` remains
+unavailable until `widget-bar` is selected.
+
+The default font set is `fonts-vendored`: Montserrat 12, 16, 28 and 48. The
+theme uses Montserrat 28 for titles when `font-montserrat-28` is enabled and
+falls back to Montserrat 14 otherwise. CJK text requires `font-cjk-14` or
+`font-cjk-16` and `Font::cjk_14()` or `Font::cjk_16()`; the Montserrat fonts do
+not contain CJK glyphs.
+
+Widgets without a typed node (`list`, `menu`, `win`) are enabled through
+`rs_lvgl_sys/widget-<name>` when `widgets-all` is off. They remain raw
+`rs_lvgl_sys` widgets; the UI crate does not wrap them.
+
+## Optional extensions
+
+`widget-qrcode`, `widget-barcode`, `widget-gif`, `widget-lottie`,
+`widget-ime-pinyin` and the CJK fonts are separate from `widgets-all`. Enable
+only the extensions the application uses.
+
+Lottie changes native types for the whole unified graph: vector graphics, matrix
+support and floating-point precise coordinates. C and C++ compilation, bindgen
+and the Rust API must agree on that configuration. The host checks do not
+verify a prebuilt external LVGL binary, and this build does not provide one.
+
+Pinyin input uses one active keyboard at a time and binds to a textarea's
+`keyboard_id`. Its candidate strip needs a CJK font.
+
+## Input features
+
+`input-keypad` adds the typed keypad driver and per-UI focus groups. It also
+enables `alloc` in `rs_lvgl`. `input-gridnav` adds spatial navigation and
+implies `input-keypad`. Merely enabling either feature does not focus existing
+touch-only screens; call `Ui::bind_keypad`, `Ui::bind_input` or
+`Ui::enable_focus`.
+
+```sh
+cargo run -p rs_lvgl_ui --example input --features simulator,input-keypad
+```
+
+`gridnav` is the native capability behind `input-gridnav`. Enabling
+`rs_lvgl_sys/gridnav` alone compiles the native module but does not add the UI
+focus behavior.
+
+## Simulator and showcase
+
+The host simulator uses LVGL's SDL2 backend. It does not depend on the Rust
+`sdl2` bindings, and SDL events are handled in C. `rs_lvgl_ui` exposes this as
+`simulator`; `rs_lvgl` exposes the underlying `sdl` feature. SDL2 and a working C
+toolchain must be available at build time; pkg-config is preferred, with
+`sdl2-config` as a fallback.
+
+```sh
+cargo run -p rs_lvgl_ui --example studio --features showcase
+cargo run -p rs_lvgl_ui --example capabilities --features capability-gallery
+cargo run -p rs_lvgl_ui --example sdl_demo --features simulator
+```
+
+`showcase` is a host demo set: `alloc`, `widgets-all`, `fonts-vendored`,
+`capability-gallery`, plus Montserrat 20 and 32. `capability-gallery` includes
+the simulator, components, grid navigation, Canvas, QR, barcode, GIF, Lottie,
+Pinyin, textarea and CJK 16. These features change example availability, not the
+library defaults of an application that does not select them.
+
+## Allocation and initialization
+
+`alloc` enables allocator support in `rs_lvgl` and is required by
+`rs_lvgl_ui`. `no_std` still permits allocation; the feature selects the
+allocator-aware APIs. A bare-metal target that cannot use the `ctor` hook also
+enables `no-autoinit` and calls `rs_lvgl::init()` before any LVGL or UI call.
+
+```sh
+cargo check -p rs_lvgl_ui --no-default-features --features alloc
+cargo check -p rs_lvgl_ui --target riscv32imafc-unknown-none-elf \
+  --no-default-features --features alloc,no-autoinit
+```
+
+`lvgl_alloc` goes further and installs an LVGL-backed global allocator for Rust
+allocations. Boxed values then use `lv_malloc` and `lv_free`, so allocation and
+free must stay paired and the LVGL heap must be initialized. Enable it only when
+that global allocator policy fits the application; it is not required for the UI
+layer.
+
+`rust_timer` exposes `rs_lvgl::timer` for a Rust clock that feeds
+`lv_tick_set_cb`. The underlying `rs_lvgl_sys` timer features are retained
+compatibility no-ops; the LVGL 9 tick callback is a runtime API.
+
+## Use your own lv_conf.h
+
+`minimal-config` is a mode for the default, vendored configuration. Without an
+application header, every optional widget and every Montserrat size except 14 is
+off unless its feature, or a feature that depends on it, enables it. Core
+objects, labels, buttons and Montserrat 14 stay on.
+
+The mode is not subtractive for an application header. When
+`LVGL_CONFIG_PATH` is set, the header is authoritative and is never patched.
+Explicit widget, font, extension and SDL features are checked against its
+effective macros:
+
+- A requested `widget-slider` requires `LV_USE_SLIDER`; its native dependency
+  `LV_USE_BAR` must also be enabled.
+- A requested `font-montserrat-28` requires `LV_FONT_MONTSERRAT_28`.
+- A requested `sdl` requires `LV_USE_SDL`, and a header that enables
+  `LV_USE_SDL` requires the Cargo `sdl` feature.
+- Lottie requires internal ThorVG and the related vector, matrix and float
+  settings in the header.
+
+A raw header that disables core classes or Montserrat 14 cannot be used for
+`rs_lvgl_ui`. The UI crate also has handwritten APIs whose Cargo features must
+remain selected; generated wrappers alone do not describe that surface.
+
+The official widgets demo is the exception on the default path:
+`rs_lvgl_sys/lv-demo-widgets` needs the full set, so the build warns and ignores
+`minimal-config` when both are selected. The same rule does not apply to an
+application header.
+
+## Check why extra widgets are still enabled
+
+Cargo features are additive. Enabling `widget-chart` in any crate in the graph
+enables the chart for the whole build, including a dependency that requested a
+smaller set. `minimal-config` does not remove a capability that another crate
+enabled. To understand an unexpectedly present widget, inspect the resolved
+features:
+
+```sh
+cargo tree -e features -i rs_lvgl_sys
+```
+
+The application header is not part of Cargo feature resolution. It can enable
+capabilities that no Cargo feature requested, and Cargo can request capabilities
+the header disabled. The second case fails the build; the first produces a
+larger native configuration than the feature list suggests.
+
+Do not use `--all-features` as a shortcut for a supported configuration. The
+feature set includes nightly-only and application-supplied integration paths,
+and a successful union does not describe a deployable build.
+
+## See what each layer provides
+
+<ArchifyDiagram id="capabilities" />
+
+The declarative foundation, optional features and platform integration together make an application. Use the groups to choose a layer, then the Cargo configuration and feature tables below to select it.
+
+### How a feature affects the build
+
+A feature selection has two visible effects: the Rust API exposes the selected constructor, and the native build includes the LVGL capability it needs. The native dependency of a widget does not automatically expose that dependency's Rust constructor.
+
+<ConceptDiagram kind="features" />
+
+For example, selecting `widget-slider` enables the slider API and the native bar dependency. A Rust `use` statement only brings an available name into scope; it does not select a Cargo feature. With an application header, the build checks the requested capabilities against that header instead of changing its macros.
+
+## Verification
+
+Feature changes need a compile check of the actual selection, not only a default
+build:
+
+```sh
+cargo check -p rs_lvgl_ui --no-default-features --features alloc
+cargo check -p rs_lvgl_ui --no-default-features --features alloc,components
+cargo check -p rs_lvgl_ui --no-default-features --features alloc,widget-slider
+cargo check -p rs_lvgl --no-default-features --lib
+```
+
+The checked-in CI also runs the showcase examples, the no-default-features
+library check, and the `lvgl_alloc` plus `rust_timer` combination. A successful
+host check selects a feature graph; it does not show target rendering, a reduced
+linked image, or compatibility with an external provider.
+
+<GuideLinks items={["device", "runtime"]} />

@@ -1,0 +1,24 @@
+[
+  {
+    "text": "Guide",
+    "link": "/guide/getting-started",
+    "activeMatch": "/guide/"
+  },
+  {
+    "text": "Component preview",
+    "link": "/studio"
+  },
+  {
+    "text": "Playground",
+    "link": "/playground"
+  },
+  {
+    "text": "Examples",
+    "link": "/guide/examples"
+  },
+  {
+    "text": "GitHub",
+    "link": "https://github.com/umbrella22/rs_lvgl",
+    "position": "right"
+  }
+]

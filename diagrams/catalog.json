@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "figures": [
+    {
+      "id": "data-model",
+      "locale": "zh",
+      "type": "class",
+      "title": "状态、消息与视图的分工",
+      "candidate": "website/diagrams/zh/data-model.json",
+      "generated": ".archify/class-data-model-zh-20261026-163429/data-model.html",
+      "published": "website/docs/public/diagrams/zh/data-model.html",
+      "guide": "declarative-ui"
+    },
+    {
+      "id": "message-flow",
+      "locale": "zh",
+      "type": "dataflow",
+      "title": "一次开关操作，怎样更新画面",
+      "candidate": "website/diagrams/zh/message-flow.json",
+      "generated": ".archify/dataflow-message-flow-zh-20261026-175054/message-flow.html",
+      "published": "website/docs/public/diagrams/zh/message-flow.html",
+      "guide": "input-and-events"
+    },
+    {
+      "id": "build-path",
+      "locale": "zh",
+      "type": "dataflow",
+      "title": "一份目标配置，连接 C 与 Rust",
+      "candidate": "website/diagrams/zh/build-path.json",
+      "generated": ".archify/dataflow-build-path-zh-20261026-175054/build-path.html",
+      "published": "website/docs/public/diagrams/zh/build-path.html",
+      "guide": "native-integration"
+    },
+    {
+      "id": "capabilities",
+      "locale": "zh",
+      "type": "tree",
+      "title": "构建一个应用，需要哪些能力",
+      "candidate": "website/diagrams/zh/capabilities.json",
+      "generated": ".archify/tree-capabilities-zh-20261026-163429/capabilities.html",
+      "published": "website/docs/public/diagrams/zh/capabilities.html",
+      "guide": "features"
+    },
+    {
+      "id": "data-model",
+      "locale": "en",
+      "type": "class",
+      "title": "State, messages and view ownership",
+      "candidate": "website/diagrams/en/data-model.json",
+      "generated": ".archify/class-data-model-en-20261026-163429/data-model.html",
+      "published": "website/docs/public/diagrams/en/data-model.html",
+      "guide": "declarative-ui"
+    },
+    {
+      "id": "message-flow",
+      "locale": "en",
+      "type": "dataflow",
+      "title": "How one switch interaction updates the screen",
+      "candidate": "website/diagrams/en/message-flow.json",
+      "generated": ".archify/dataflow-message-flow-en-20261026-175054/message-flow.html",
+      "published": "website/docs/public/diagrams/en/message-flow.html",
+      "guide": "input-and-events"
+    },
+    {
+      "id": "build-path",
+      "locale": "en",
+      "type": "dataflow",
+      "title": "One target configuration connects C and Rust",
+      "candidate": "website/diagrams/en/build-path.json",
+      "generated": ".archify/dataflow-build-path-en-20261026-175054/build-path.html",
+      "published": "website/docs/public/diagrams/en/build-path.html",
+      "guide": "native-integration"
+    },
+    {
+      "id": "capabilities",
+      "locale": "en",
+      "type": "tree",
+      "title": "Capabilities that make an application",
+      "candidate": "website/diagrams/en/capabilities.json",
+      "generated": ".archify/tree-capabilities-en-20261026-163429/capabilities.html",
+      "published": "website/docs/public/diagrams/en/capabilities.html",
+      "guide": "features"
+    }
+  ]
+}

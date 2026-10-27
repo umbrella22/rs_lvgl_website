@@ -1,0 +1,65 @@
+[
+  {
+    "id": "switch",
+    "title": {
+      "zh": "让开关响应点击",
+      "en": "Make a switch respond"
+    },
+    "source": "use rs_lvgl_ui::prelude::*;\n\nstruct Settings {\n    enabled: bool,\n    changes: u32,\n}\n\n#[derive(Clone)]\nenum Message {\n    Enabled(bool),\n    Reset,\n}\n\nimpl App for Settings {\n    type Msg = Message;\n\n    fn update(&mut self, message: Message) {\n        match message {\n            Message::Enabled(value) => {\n                self.enabled = value;\n                self.changes += 1;\n            }\n            Message::Reset => {\n                self.enabled = false;\n                self.changes = 0;\n            }\n        }\n    }\n\n    fn view(&self, theme: &Theme) -> View<Message> {\n        column([\n            label(\"Notifications\").style(Style::title(theme)),\n            row([\n                switch(self.enabled).on_value_changed(|value| Message::Enabled(value != 0)),\n                label(if self.enabled { \"Enabled\" } else { \"Disabled\" }),\n            ])\n            .style(Style::surface(theme).gap(24)),\n            label(format!(\"Changed {} times\", self.changes)),\n            button(\"Reset\")\n                .on_click(Message::Reset)\n                .style(Style::accent(theme)),\n        ])\n        .style(Style::screen(theme).pad(32).gap(24))\n    }\n}\n\nfn app() -> impl App {\n    Settings {\n        enabled: false,\n        changes: 0,\n    }\n}\n",
+    "sourceHash": "77f8090c85500efcddf48c1fdd5d7cd1a1bd8bb68255810001afa4aa82a74c29"
+  },
+  {
+    "id": "column",
+    "title": {
+      "zh": "从一列开始",
+      "en": "Start with a column"
+    },
+    "source": "use rs_lvgl_ui::prelude::*;\n\nfn view(theme: &Theme) -> View<()> {\n    column([\n        label(\"Hello, LVGL\").style(Style::title(theme)),\n        label(\"A screen is a tree of ordinary Rust values.\").style(Style::body(theme)),\n        button(\"Start building\").style(Style::accent(theme)),\n    ])\n    .style(Style::screen(theme).pad(24).gap(16))\n}\nstruct Example;\n\nimpl rs_lvgl_ui::App for Example {\n    type Msg = ();\n\n    fn update(&mut self, _: ()) {}\n\n    fn view(&self, theme: &rs_lvgl_ui::Theme) -> rs_lvgl_ui::View<()> {\n        view(theme)\n    }\n}\n\nfn app() -> impl rs_lvgl_ui::App {\n    Example\n}\n",
+    "sourceHash": "98d52c3e75fde725900e2b79be5a4019bab67031fd63e06bbd32fd5e00ae6b8e"
+  },
+  {
+    "id": "row",
+    "title": {
+      "zh": "给内容留出空间",
+      "en": "Make room for content"
+    },
+    "source": "use rs_lvgl_ui::prelude::*;\n\nfn view(theme: &Theme) -> View<()> {\n    let actions = row([\n        button(\"Back\").style(Style::body(theme)),\n        label(\"Step 2 of 3\").style(Style::body(theme).flex_grow(1)),\n        button(\"Continue\").style(Style::accent(theme)),\n    ])\n    .style(Style::surface(theme).width(Size::Percent(100)).gap(12));\n\n    column([\n        label(\"Make room\").style(Style::title(theme)),\n        label(\"The middle label grows into the available space.\"),\n        actions,\n    ])\n    .style(Style::screen(theme).pad(24).gap(20))\n}\nstruct Example;\n\nimpl rs_lvgl_ui::App for Example {\n    type Msg = ();\n\n    fn update(&mut self, _: ()) {}\n\n    fn view(&self, theme: &rs_lvgl_ui::Theme) -> rs_lvgl_ui::View<()> {\n        view(theme)\n    }\n}\n\nfn app() -> impl rs_lvgl_ui::App {\n    Example\n}\n",
+    "sourceHash": "4c4e6d5b2fcb1e5acbe60223145d04d64747ad169dd0cab361cb96be3bfd410c"
+  },
+  {
+    "id": "grid",
+    "title": {
+      "zh": "用网格指定位置",
+      "en": "Place views in a grid"
+    },
+    "source": "use rs_lvgl_ui::prelude::*;\n\nfn view(theme: &Theme) -> View<()> {\n    let tiles = grid(\n        [GridTrack::Fr(1), GridTrack::Fr(1)],\n        [GridTrack::Px(72), GridTrack::Px(72)],\n        [\n            button(\"Top left\").grid_cell(0, 0, 1, 1),\n            button(\"Top right\").grid_cell(1, 0, 1, 1),\n            button(\"Two columns\").grid_cell(0, 1, 2, 1),\n        ],\n    )\n    .style(Style::surface(theme).width(Size::Percent(100)).gap(12));\n\n    column([\n        label(\"A place for everything\").style(Style::title(theme)),\n        tiles,\n    ])\n    .style(Style::screen(theme).pad(24).gap(20))\n}\nstruct Example;\n\nimpl rs_lvgl_ui::App for Example {\n    type Msg = ();\n\n    fn update(&mut self, _: ()) {}\n\n    fn view(&self, theme: &rs_lvgl_ui::Theme) -> rs_lvgl_ui::View<()> {\n        view(theme)\n    }\n}\n\nfn app() -> impl rs_lvgl_ui::App {\n    Example\n}\n",
+    "sourceHash": "f6494422acd90e0893e1c6a2605b69d86ddaa536a0e874d3d3dd9694c323fc18"
+  },
+  {
+    "id": "title",
+    "title": {
+      "zh": "提取一个标题",
+      "en": "Extract a title"
+    },
+    "source": "use rs_lvgl_ui::prelude::*;\n\nfn page_title<M>(text: &str, theme: &Theme) -> View<M> {\n    column([\n        label(\"WORKSPACE\").style(Style::muted(theme)),\n        label(text).style(Style::title(theme)),\n    ])\n    .style(Style::default().gap(8))\n}\n\nfn view(theme: &Theme) -> View<()> {\n    let content = label(\"Notification preferences\");\n    let title = page_title(\"Settings\", theme);\n\n    column([title, content, button(\"Save\").style(Style::accent(theme))])\n        .style(Style::screen(theme).pad(24).gap(24))\n}\nstruct Example;\n\nimpl rs_lvgl_ui::App for Example {\n    type Msg = ();\n\n    fn update(&mut self, _: ()) {}\n\n    fn view(&self, theme: &rs_lvgl_ui::Theme) -> rs_lvgl_ui::View<()> {\n        view(theme)\n    }\n}\n\nfn app() -> impl rs_lvgl_ui::App {\n    Example\n}\n",
+    "sourceHash": "4247b0041fc38e7978af73cf0cf403cb5d651a6278e1d8e440cfc16544939cba"
+  },
+  {
+    "id": "controls",
+    "title": {
+      "zh": "组合设备控件",
+      "en": "Compose device controls"
+    },
+    "source": "use rs_lvgl_ui::prelude::*;\n\nfn view(theme: &Theme) -> View<()> {\n    column([\n        label(\"Device settings\").style(Style::title(theme)),\n        row([\n            label(\"Brightness\").style(Style::body(theme)),\n            slider(0, 100, 64).style(Style::default().width(Size::Px(240)).height(Size::Px(16))),\n            label(\"64%\"),\n        ])\n        .style(Style::surface(theme).gap(24)),\n        row([label(\"Notifications\"), switch(true)]).style(Style::surface(theme).gap(24)),\n        button(\"Apply settings\").style(Style::accent(theme)),\n    ])\n    .style(Style::screen(theme).pad(24).gap(24))\n}\nstruct Example;\n\nimpl rs_lvgl_ui::App for Example {\n    type Msg = ();\n\n    fn update(&mut self, _: ()) {}\n\n    fn view(&self, theme: &rs_lvgl_ui::Theme) -> rs_lvgl_ui::View<()> {\n        view(theme)\n    }\n}\n\nfn app() -> impl rs_lvgl_ui::App {\n    Example\n}\n",
+    "sourceHash": "024623d3e76176fbe6b516f66ae71a0701cd0c225af0636dd38ef458dbfd2b39"
+  },
+  {
+    "id": "keyed-list",
+    "title": {
+      "zh": "为条目保留身份",
+      "en": "Give items an identity"
+    },
+    "source": "use rs_lvgl_ui::prelude::*;\n\nfn view(theme: &Theme) -> View<()> {\n    let devices = [(41, \"Studio\"), (73, \"Kitchen\"), (92, \"Bedroom\")];\n    let rows = devices.into_iter().map(|(id, name)| {\n        row([\n            label(name).style(Style::body(theme).flex_grow(1)),\n            label(format!(\"ID {id}\")).style(Style::muted(theme)),\n        ])\n        .key(Key::Id(id))\n        .style(Style::surface(theme).width(Size::Percent(100)).pad(16))\n    });\n\n    column([label(\"Your devices\").style(Style::title(theme))])\n        .children(rows)\n        .style(Style::screen(theme).pad(24).gap(12))\n}\nstruct Example;\n\nimpl rs_lvgl_ui::App for Example {\n    type Msg = ();\n\n    fn update(&mut self, _: ()) {}\n\n    fn view(&self, theme: &rs_lvgl_ui::Theme) -> rs_lvgl_ui::View<()> {\n        view(theme)\n    }\n}\n\nfn app() -> impl rs_lvgl_ui::App {\n    Example\n}\n",
+    "sourceHash": "465df85e6a0839820a82cfd4440b268aba69e0a071764d48dd70a6fa112e0fba"
+  }
+]

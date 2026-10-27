@@ -1,0 +1,73 @@
+[
+  {
+    "type": "section-header",
+    "label": "开始使用"
+  },
+  {
+    "type": "file",
+    "name": "getting-started",
+    "label": "快速开始"
+  },
+  {
+    "type": "file",
+    "name": "browser-playground",
+    "label": "在浏览器中试写"
+  },
+  {
+    "type": "section-header",
+    "label": "编写界面"
+  },
+  {
+    "type": "file",
+    "name": "declarative-ui",
+    "label": "排列控件"
+  },
+  {
+    "type": "file",
+    "name": "input-and-events",
+    "label": "响应输入"
+  },
+  {
+    "type": "file",
+    "name": "components",
+    "label": "复用组件"
+  },
+  {
+    "type": "section-header",
+    "label": "接入设备"
+  },
+  {
+    "type": "file",
+    "name": "native-integration",
+    "label": "显示与原生配置"
+  },
+  {
+    "type": "file",
+    "name": "features",
+    "label": "选择控件与字体"
+  },
+  {
+    "type": "file",
+    "name": "ui-runtime",
+    "label": "挂载与更新"
+  },
+  {
+    "type": "section-header",
+    "label": "参考"
+  },
+  {
+    "type": "file",
+    "name": "examples",
+    "label": "运行示例"
+  },
+  {
+    "type": "file",
+    "name": "troubleshooting",
+    "label": "故障排查"
+  },
+  {
+    "type": "file",
+    "name": "development",
+    "label": "参与开发"
+  }
+]

@@ -1,0 +1,340 @@
+{
+  "schemaVersion": 1,
+  "basis": "working-tree-content",
+  "sources": {
+    "app": {
+      "path": "rs_lvgl_ui/src/app.rs",
+      "line": 22,
+      "endLine": 47,
+      "fileSha256": "c1d891dd3ee492266d3250f50baec766c7acba662d947b41054946c9b9e8e1e0",
+      "excerptSha256": "713c2f0f79b2d266ab8c5b7dca6cdd3a8767acf54fed04b344b448a384cea69a",
+      "excerpt": "/// `update` changes application state only. `view` reads state and returns a\n/// descriptor tree. Neither method may call LVGL or block.\n///\n/// `Msg` must be `Clone` because a click handler stores its message and clones\n/// it for every click.\npub trait App {\n    type Msg: Clone + 'static;\n\n    fn update(&mut self, msg: Self::Msg);\n    fn view(&self, theme: &Theme) -> View<Self::Msg>;\n\n    /// Optional tree mounted above the view, on the display's top layer.\n    ///\n    /// Dialogs, toasts and other overlays render here so they cover the whole\n    /// screen regardless of the view's layout. The overlay root fills the\n    /// display, has no style and is not clickable: input reaches the view\n    /// except where an overlay widget (or a clickable backdrop) is hit.\n    /// Returning `None` deletes the overlay tree.\n    ///\n    /// The overlay is reconciled together with the view and shares its\n    /// message queue. Keyboard ids are resolved across both trees, so they\n    /// should be unique across the view and the overlay.\n    fn overlay(&self, theme: &Theme) -> Option<View<Self::Msg>> {\n        let _ = theme;\n        None\n    }\n"
+    },
+    "ownership": {
+      "path": "rs_lvgl_ui/src/app.rs",
+      "line": 75,
+      "endLine": 95,
+      "fileSha256": "c1d891dd3ee492266d3250f50baec766c7acba662d947b41054946c9b9e8e1e0",
+      "excerptSha256": "455a03baf1e3c74c540fd490685b3bf09d33b41c0eaac43d6b5a8627e6693a6a",
+      "excerpt": "/// A mounted declarative UI.\n///\n/// `Ui` is neither `Send` nor `Sync`. One instance owns one root container on\n/// one LVGL screen and, while [`App::overlay`] returns a tree, one overlay\n/// root on that display's top layer.\npub struct Ui<M: Clone + 'static> {\n    screen: NonNull<lv_obj_t>,\n    theme: Theme,\n    queue: Rc<EventQueue<M>>,\n    root: Option<NonNull<lv_obj_t>>,\n    mounted: Option<MountedNode<M>>,\n    overlay_root: Option<NonNull<lv_obj_t>>,\n    overlay: Option<MountedNode<M>>,\n    busy: Cell<bool>,\n    counters: Counters,\n    messages_processed: u64,\n    reconciled_updates: u64,\n    dirty: bool,\n    #[cfg(feature = \"input-keypad\")]\n    focus: Option<crate::focus::FocusGroup>,\n}\n"
+    },
+    "drain": {
+      "path": "rs_lvgl_ui/src/app.rs",
+      "line": 148,
+      "endLine": 192,
+      "fileSha256": "c1d891dd3ee492266d3250f50baec766c7acba662d947b41054946c9b9e8e1e0",
+      "excerptSha256": "c30174a740790002fa10be32241672ea11d732b40536f2fa3b96136264ab2a78",
+      "excerpt": "    /// Reconcile the application's first tree.\n    ///\n    /// Calling `mount` again reconciles against the existing mounted tree.\n    pub fn mount<A: App<Msg = M>>(&mut self, app: &A) -> Result<(), UiError> {\n        let _guard = enter(&self.busy)?;\n        let tree = app.view(&self.theme);\n        let overlay = app.overlay(&self.theme);\n        self.render(tree, overlay)\n    }\n\n    /// Process at most `max_messages` queued messages, then reconcile once.\n    ///\n    /// When no message was processed and nothing marked the UI dirty, the\n    /// drain returns without calling `App::view`, so an idle main loop does\n    /// not rebuild and diff the whole tree. State that changes outside\n    /// messages (clocks, sensors read in `view`) must call\n    /// [`Ui::mark_dirty`] or [`Ui::update`].\n    pub fn drain<A: App<Msg = M>>(\n        &mut self,\n        app: &mut A,\n        max_messages: usize,\n    ) -> Result<DrainStats, UiError> {\n        let _guard = enter(&self.busy)?;\n        let dropped_before = self.queue.dropped();\n        let mut processed = 0;\n        while processed < max_messages {\n            let Some(message) = self.queue.pop() else {\n                break;\n            };\n            app.update(message);\n            processed += 1;\n        }\n        self.messages_processed += processed as u64;\n        let reconciled = processed > 0 || self.dirty || self.mounted.is_none();\n        if reconciled {\n            let tree = app.view(&self.theme);\n            let overlay = app.overlay(&self.theme);\n            self.render(tree, overlay)?;\n        }\n        Ok(DrainStats {\n            processed,\n            dropped: self.queue.dropped() - dropped_before,\n            reconciled,\n        })\n    }\n"
+    },
+    "render": {
+      "path": "rs_lvgl_ui/src/app.rs",
+      "line": 413,
+      "endLine": 454,
+      "fileSha256": "c1d891dd3ee492266d3250f50baec766c7acba662d947b41054946c9b9e8e1e0",
+      "excerptSha256": "fe79ff5a9cf1fc7e09b646dd1a933548dbcf590683efff3c103501eb4fd2f58f",
+      "excerpt": "    fn render(&mut self, tree: View<M>, overlay: Option<View<M>>) -> Result<(), UiError> {\n        node::validate(&tree)?;\n        if let Some(overlay) = &overlay {\n            node::validate(overlay)?;\n        }\n        #[cfg(feature = \"input-keypad\")]\n        if let Some(group) = &mut self.focus {\n            group.capture(&[self.mounted.as_ref(), self.overlay.as_ref()]);\n            #[cfg(feature = \"input-gridnav\")]\n            for tree in [&mut self.mounted, &mut self.overlay].into_iter().flatten() {\n                crate::gridnav::capture(tree);\n            }\n        }\n        self.ensure_root()?;\n        let root = self.root.expect(\"root was just ensured\");\n        let queue = self.queue.clone();\n        reconcile_tree(root, &mut self.mounted, tree, &queue, &mut self.counters)?;\n\n        match overlay {\n            Some(overlay) => {\n                let overlay_root = self.ensure_overlay_root()?;\n                reconcile_tree(\n                    overlay_root,\n                    &mut self.overlay,\n                    overlay,\n                    &queue,\n                    &mut self.counters,\n                )?;\n            }\n            None => self.delete_overlay(),\n        }\n\n        let trees = [self.mounted.as_ref(), self.overlay.as_ref()];\n        reconciler::bind_keyboards(&trees, &mut self.counters);\n        for tree in trees.iter().flatten() {\n            crate::scroll::apply_offsets(tree);\n        }\n        #[cfg(feature = \"input-keypad\")]\n        self.sync_focus()?;\n        self.reconciled_updates += 1;\n        self.dirty = false;\n        Ok(())\n"
+    },
+    "descriptor": {
+      "path": "rs_lvgl_ui/src/node.rs",
+      "line": 1121,
+      "endLine": 1146,
+      "fileSha256": "ff19f7f5e174d0659a25b4deb3d8a25f94b61d9169d0e66af7675e656a88252b",
+      "excerptSha256": "e518f772d17872eca024a6e6b7c91c57c5cb4654130c551a246ccc7df41143f0",
+      "excerpt": "/// The backing descriptor type for [`crate::View`].\n///\n/// Constructing a descriptor never touches LVGL. Application and component\n/// functions return [`crate::View`] and use ordinary constructors such as\n/// [`crate::column`], [`crate::label`] and [`crate::button`].\npub struct Node<M> {\n    pub(crate) key: Key,\n    pub(crate) kind: WidgetKind,\n    pub(crate) style: Style,\n    pub(crate) part_styles: Vec<(Selector, Style)>,\n    pub(crate) keyboard_id: Option<u64>,\n    pub(crate) grid_cell: Option<GridCell>,\n    pub(crate) children: Vec<Node<M>>,\n    pub(crate) handlers: HandlerSet<M>,\n    pub(crate) clickable: Option<bool>,\n    pub(crate) scrollable: Option<bool>,\n    pub(crate) checked: Option<bool>,\n    pub(crate) interaction: crate::scroll::Interaction,\n    pub(crate) animations: Vec<crate::Animation>,\n    #[cfg(feature = \"input-keypad\")]\n    pub(crate) focusable: Option<bool>,\n    #[cfg(feature = \"input-keypad\")]\n    pub(crate) modal: bool,\n    #[cfg(feature = \"input-gridnav\")]\n    pub(crate) grid_navigation: Option<crate::GridNavigation>,\n}\n"
+    },
+    "alias": {
+      "path": "rs_lvgl_ui/src/lib.rs",
+      "line": 133,
+      "endLine": 139,
+      "fileSha256": "c80107680b522a06405117539ddaabdb003a0f2d6c19057afa22994a043192d5",
+      "excerptSha256": "209a279cbaf57fe479e24f112d6eb0997c57a0988d22b488fc335b87746d8e1c",
+      "excerpt": "/// A declarative view description returned by [`App::view`] and component functions.\n///\n/// [`Node`] is the backing descriptor type; `View` is an alias for that same type.\n/// Use ordinary\n/// constructors such as [`column()`], [`label()`] and [`button()`] to build views;\n/// constructing a view does not create any native LVGL objects.\npub type View<M> = Node<M>;\n"
+    },
+    "switch": {
+      "path": "website/playground/apps/switch.rs",
+      "line": 1,
+      "endLine": 52,
+      "fileSha256": "77f8090c85500efcddf48c1fdd5d7cd1a1bd8bb68255810001afa4aa82a74c29",
+      "excerptSha256": "77f8090c85500efcddf48c1fdd5d7cd1a1bd8bb68255810001afa4aa82a74c29",
+      "excerpt": "use rs_lvgl_ui::prelude::*;\n\nstruct Settings {\n    enabled: bool,\n    changes: u32,\n}\n\n#[derive(Clone)]\nenum Message {\n    Enabled(bool),\n    Reset,\n}\n\nimpl App for Settings {\n    type Msg = Message;\n\n    fn update(&mut self, message: Message) {\n        match message {\n            Message::Enabled(value) => {\n                self.enabled = value;\n                self.changes += 1;\n            }\n            Message::Reset => {\n                self.enabled = false;\n                self.changes = 0;\n            }\n        }\n    }\n\n    fn view(&self, theme: &Theme) -> View<Message> {\n        column([\n            label(\"Notifications\").style(Style::title(theme)),\n            row([\n                switch(self.enabled).on_value_changed(|value| Message::Enabled(value != 0)),\n                label(if self.enabled { \"Enabled\" } else { \"Disabled\" }),\n            ])\n            .style(Style::surface(theme).gap(24)),\n            label(format!(\"Changed {} times\", self.changes)),\n            button(\"Reset\")\n                .on_click(Message::Reset)\n                .style(Style::accent(theme)),\n        ])\n        .style(Style::screen(theme).pad(32).gap(24))\n    }\n}\n\nfn app() -> impl App {\n    Settings {\n        enabled: false,\n        changes: 0,\n    }\n}\n"
+    },
+    "event-map": {
+      "path": "rs_lvgl_ui/src/events.rs",
+      "line": 400,
+      "endLine": 454,
+      "fileSha256": "65c733f82c3cf312aee1dd65eafc696f2c0a635eee18a3e8562d9f2ee02c3c35",
+      "excerptSha256": "bd4e3d857817d221f23773e44d7e049fcb8bc79004eedb5160cc8533df793906",
+      "excerpt": "    fn dispatch(\n        &self,\n        code: u32,\n        target: *mut lv_obj_t,\n        param: *mut cty::c_void,\n        input: Option<InputEvent>,\n        bubbled: bool,\n    ) {\n        // Collect before posting so handler execution cannot borrow the queue.\n        let mut messages: [Option<M>; 6] = core::array::from_fn(|_| None);\n        {\n            let Ok(mut handlers) = self.handlers.try_borrow_mut() else {\n                return;\n            };\n            if bubbled {\n                if let (Some(map), Some(input)) = (&mut handlers.bubbled, &input) {\n                    messages[0] = map(input);\n                }\n            } else {\n                if code == rs_lvgl_sys::lv_event_code_t_LV_EVENT_CLICKED {\n                    if let Some(msg) = &handlers.click {\n                        messages[0] = Some(msg.clone());\n                    }\n                }\n                if code == rs_lvgl_sys::lv_event_code_t_LV_EVENT_VALUE_CHANGED {\n                    if let Some(map) = &mut handlers.value_changed {\n                        messages[1] = Some(map(read_value(target, self.value_source, param)));\n                    }\n                    #[cfg(feature = \"widget-textarea\")]\n                    if let Some(map) = &mut handlers.text_changed {\n                        // SAFETY: the slot's value source was validated as a\n                        // textarea. Copy before its native text can change.\n                        messages[2] = unsafe { with_text(target, |text| map(text)) };\n                    }\n                }\n                if let (Some(map), Some(event)) = (&mut handlers.event, map_event(code)) {\n                    messages[3] = map(&event);\n                }\n                messages[4] = match input {\n                    Some(InputEvent::Key(value)) => handlers.key.as_mut().map(|f| f(value)),\n                    Some(InputEvent::Rotary(value)) => handlers.rotary.as_mut().map(|f| f(value)),\n                    Some(InputEvent::Gesture(value)) => handlers.gesture.as_mut().map(|f| f(value)),\n                    Some(InputEvent::Scroll(value)) => handlers.scroll.as_mut().map(|f| f(value)),\n                    Some(InputEvent::Pointer(value)) => handlers.pointer.as_mut().map(|f| f(value)),\n                    _ => None,\n                };\n                if code == rs_lvgl_sys::lv_event_code_t_LV_EVENT_LONG_PRESSED {\n                    messages[5] = handlers.long_press.clone();\n                }\n            }\n        }\n        for message in messages.into_iter().flatten() {\n            self.queue.post(message);\n        }\n    }\n"
+    },
+    "queue": {
+      "path": "rs_lvgl_ui/src/events.rs",
+      "line": 179,
+      "endLine": 211,
+      "fileSha256": "65c733f82c3cf312aee1dd65eafc696f2c0a635eee18a3e8562d9f2ee02c3c35",
+      "excerptSha256": "83e54a9e55384baffaf46766dad124ccf619a9e9f1c60e5f677ffb6a2db40131",
+      "excerpt": "/// Bounded message queue shared by the `Ui` and every mounted handler slot.\npub(crate) struct EventQueue<M> {\n    items: RefCell<VecDeque<M>>,\n    capacity: usize,\n    dropped: Cell<u64>,\n}\n\nimpl<M> EventQueue<M> {\n    pub(crate) fn new(capacity: usize) -> Self {\n        Self {\n            items: RefCell::new(VecDeque::with_capacity(capacity)),\n            capacity,\n            dropped: Cell::new(0),\n        }\n    }\n\n    pub(crate) fn post(&self, msg: M) {\n        let mut items = self.items.borrow_mut();\n        if items.len() == self.capacity {\n            items.pop_front();\n            self.dropped.set(self.dropped.get() + 1);\n        }\n        items.push_back(msg);\n    }\n\n    pub(crate) fn pop(&self) -> Option<M> {\n        self.items.borrow_mut().pop_front()\n    }\n\n    pub(crate) fn dropped(&self) -> u64 {\n        self.dropped.get()\n    }\n}\n"
+    },
+    "handlers": {
+      "path": "rs_lvgl_ui/src/node.rs",
+      "line": 1646,
+      "endLine": 1675,
+      "fileSha256": "ff19f7f5e174d0659a25b4deb3d8a25f94b61d9169d0e66af7675e656a88252b",
+      "excerptSha256": "e1b92095cd735f4d83ccdcaf5db3ab2dadba1b25b29b954de5d6af3c858359bf",
+      "excerpt": "    /// Enqueue `msg` when the node is clicked.\n    ///\n    /// Messages are cloned for every click, so `M` must implement `Clone`.\n    /// Handlers are independent: this can be combined with the other `on_*`\n    /// builders; calling the same builder twice replaces that handler only.\n    pub fn on_click(mut self, msg: M) -> Self\n    where\n        M: Clone,\n    {\n        self.handlers.click = Some(msg);\n        self\n    }\n\n    /// Map a value-changed event to a message.\n    ///\n    /// The value is read from the native widget after the change: the value\n    /// of sliders, bars and arcs; `1`/`0` for checked/unchecked switches and\n    /// checkboxes; the selected index of dropdowns and rollers; the value of\n    /// spinboxes; the active tab index of tabviews; the active tile index of\n    /// tileviews (`-1` before any tile is active); the pressed date of\n    /// calendars packed by [`CalendarDate::to_value`] (`-1` when none); the\n    /// clicked footer button index of message boxes. Other kinds pass the\n    /// value documented on their [`WidgetKind`] variant, or `0`.\n    pub fn on_value_changed<F>(mut self, map: F) -> Self\n    where\n        F: FnMut(i32) -> M + 'static,\n    {\n        self.handlers.value_changed = Some(Box::new(map));\n        self\n    }\n"
+    },
+    "config": {
+      "path": "rs_lvgl_sys/build.rs",
+      "line": 80,
+      "endLine": 110,
+      "fileSha256": "43e387d8e7cbf4abe6789332220c5c2ecfc05f3d13dc7783312fa9d8a1fe57a6",
+      "excerptSha256": "6345d905369031a471bd4e8f886194c14a7153e8c695e817266f80c93ee4393d",
+      "excerpt": "    // features). Any change to the vendored config is written to a patched\n    // copy that precedes the vendored directory on the include path.\n    let base_conf =\n        std::fs::read_to_string(lv_config_dir.join(\"lv_conf.h\")).expect(\"read vendored lv_conf.h\");\n    let mut conf = base_conf.clone();\n    if sdl_flags.is_some() && inputs.config.is_none() {\n        conf = patch_lv_conf_for_sdl(&conf);\n    }\n    let demo_widgets = env::var(\"CARGO_FEATURE_LV_DEMO_WIDGETS\").is_ok();\n    let mut selection = ConfigSelection::from_env(|name| env::var(name).is_ok());\n    if demo_widgets && selection.minimal && inputs.config.is_none() {\n        println!(\n            \"cargo:warning=rs_lvgl_sys: `lv-demo-widgets` needs the full widget set; ignoring `minimal-config`\"\n        );\n        selection.minimal = false;\n    }\n    let conf = if let Some(config) = &inputs.config {\n        // Preprocess the original header in place so its quoted includes keep\n        // their original meaning. Never patch an application's configuration.\n        inputs::include_directive(config).unwrap()\n    } else {\n        patch_lv_conf_for_selection(&conf, &selection)\n    };\n    let patched_conf_dir = if conf != base_conf || inputs.config.is_some() {\n        let dir = PathBuf::from(env::var(\"OUT_DIR\").unwrap()).join(\"conf\");\n        std::fs::create_dir_all(&dir).expect(\"create conf dir\");\n        std::fs::write(dir.join(\"lv_conf.h\"), &conf).expect(\"write conf/lv_conf.h\");\n        Some(dir)\n    } else {\n        None\n    };\n"
+    },
+    "target": {
+      "path": "rs_lvgl_sys/build.rs",
+      "line": 112,
+      "endLine": 150,
+      "fileSha256": "43e387d8e7cbf4abe6789332220c5c2ecfc05f3d13dc7783312fa9d8a1fe57a6",
+      "excerptSha256": "013bd1bee02fd656aa9258de2cacf33d61526a0df968cc657c1e97a448686122",
+      "excerpt": "    let target = env::var(\"TARGET\").expect(\"Cargo build scripts always have TARGET\");\n    let host = env::var(\"HOST\").expect(\"Cargo build scripts always have HOST\");\n    let riscv = riscv_target_config(&target);\n    let (triple, arch_args) = match riscv {\n        Some((triple, args)) => (triple, args),\n        None => (target.clone(), Vec::new()),\n    };\n\n    let mut cfg = Build::new();\n    cfg.define(\"LV_CONF_INCLUDE_SIMPLE\", Some(\"1\"));\n    if let Some(conf_dir) = &patched_conf_dir {\n        // Must precede lv_config_dir: quoted includes search -I in order, so\n        // `#include \"lv_conf.h\"` resolves to the patched copy, not the\n        // vendored one.\n        cfg.include(conf_dir);\n    }\n    cfg.include(&lvgl_root)\n        .include(&lvgl_src)\n        .include(&lv_config_dir)\n        .include(&vendor)\n        .warnings(false);\n\n    // cc-rs hardcodes `-mabi=ilp32` for non-Linux RV32 targets, but Rust's\n    // `riscv32imafc-unknown-none-elf` uses the single-float ABI. Pass the\n    // target's real ISA/ABI after cc-rs's defaults so the C objects and the\n    // Rust code agree; the same flags feed bindgen below.\n    if target != host {\n        for arg in &arch_args {\n            cfg.flag(arg);\n        }\n    }\n\n    if let Some(sdl) = &sdl_flags {\n        for i in &sdl.include_dirs {\n            cfg.include(i);\n        }\n        for (k, v) in &sdl.defines {\n            cfg.define(k, Some(v.as_str()));\n        }\n"
+    },
+    "bindgen": {
+      "path": "rs_lvgl_sys/build.rs",
+      "line": 230,
+      "endLine": 301,
+      "fileSha256": "43e387d8e7cbf4abe6789332220c5c2ecfc05f3d13dc7783312fa9d8a1fe57a6",
+      "excerptSha256": "ac2b17a91ad311710985807c320130cec6eb64db997dea0117fa53669bbde313",
+      "excerpt": "    }\n    let macro_values = inputs::MacroValues::default();\n    let out_path = PathBuf::from(env::var(\"OUT_DIR\").unwrap());\n    let mut bindings_builder = bindgen::Builder::default()\n        .header(shims_dir.join(\"rs_lvgl_sys.h\").to_str().unwrap())\n        .generate_comments(false)\n        .derive_default(true)\n        .layout_tests(false)\n        .use_core()\n        .ctypes_prefix(\"cty\")\n        .clang_args(cc_args.iter().map(|s| s.as_str()))\n        .allowlist_type(\"lv_.*\")\n        .allowlist_type(\"_lv_.*\")\n        .allowlist_function(\"lv_.*\")\n        .allowlist_function(\"_lv_.*\")\n        .allowlist_var(\"LV_.*\")\n        // Built-in fonts are extern `lv_font_t` variables (lowercase), e.g.\n        // lv_font_montserrat_14; expose the ones enabled in lv_conf.h.\n        .allowlist_var(\"lv_font_.*\")\n        .blocklist_function(\"lv_log_add\"); // varargs (va_list); not safely bindable on all targets\n                                           // The public lvgl.h tree doesn't declare demo entry points; parse the\n                                           // demo header too so lv_demo_widgets() lands in the bindings.\n    if demo_widgets {\n        bindings_builder = bindings_builder.header(\n            lvgl_root\n                .join(\"demos/widgets/lv_demo_widgets.h\")\n                .to_str()\n                .unwrap(),\n        );\n    }\n    for header in &inputs.headers {\n        bindings_builder = bindings_builder\n            .header(header.to_str().expect(\"validated header path\"))\n            .allowlist_file(inputs::file_pattern(header));\n    }\n    let mut bindings = bindings_builder\n        .clone()\n        .parse_callbacks(Box::new(macro_values.callbacks()))\n        .generate()\n        .expect(\"Unable to generate LVGL 9.6 bindings\")\n        .to_string();\n\n    if inputs.config.is_some() {\n        let callbacks = inputs::FinalMacros {\n            names: macro_values.names(),\n            cargo: bindgen::CargoCallbacks::new(),\n        };\n        let final_macros = out_path.join(\"lvgl-final-macros.h\");\n        std::fs::write(&final_macros, callbacks.declarations())\n            .expect(\"write final macro declarations\");\n        bindings = bindings_builder\n            .header(final_macros.to_str().expect(\"UTF-8 OUT_DIR\"))\n            .allowlist_var(\"__lv_rs_final_.*\")\n            .parse_callbacks(Box::new(callbacks))\n            .generate()\n            .expect(\"Unable to evaluate final LVGL configuration macros\")\n            .to_string();\n        bindings = inputs::FinalMacros::project(&bindings)\n            .expect(\"Unable to project final LVGL integer macros\");\n        macro_values.read_constants(&bindings);\n        validate_application_config(&macro_values, &selection, sdl_flags.is_some(), demo_widgets)\n            .unwrap_or_else(|error| panic!(\"{error}\"));\n    }\n    // Metadata comes from the target preprocessor, including expressions and\n    // transitive headers, rather than a textual approximation of the config.\n    println!(\n        \"cargo:widgets={}\",\n        OPTIONAL_WIDGETS\n            .iter()\n            .filter(|w| macro_values.enabled(&format!(\"LV_USE_{}\", w.conf)))\n            .map(|w| w.feature)\n            .collect::<Vec<_>>()\n"
+    },
+    "native": {
+      "path": "rs_lvgl_sys/build.rs",
+      "line": 325,
+      "endLine": 345,
+      "fileSha256": "43e387d8e7cbf4abe6789332220c5c2ecfc05f3d13dc7783312fa9d8a1fe57a6",
+      "excerptSha256": "3a1246bfc207b042c2a80ba97c33c82bac12704b65752cdbdabb2e500c00f311",
+      "excerpt": "    // C and C++ share the exact include order, defines and target ABI flags.\n    // Only the selected vendored ThorVG provider requires a C++ toolchain.\n    let mut cpp = cfg.clone();\n    add_c_files(&mut cfg, &lvgl_src);\n    add_c_files(&mut cfg, &shims_dir);\n    if let Some(path) = &inputs.extra_c {\n        add_c_files(&mut cfg, path);\n    }\n\n    // Official widgets demo (`demo-widgets` cargo feature): compile the\n    // vendored demo sources. LV_USE_DEMO_WIDGETS itself is enabled in the\n    // vendored lv_conf.h.\n    if demo_widgets {\n        let widgets_dir = lvgl_root.join(\"demos\").join(\"widgets\");\n        add_c_files(&mut cfg, &widgets_dir);\n        // lv_demo_widgets refers to the shared demo-args helper, which is\n        // defined at demos/lv_demos.c (other demos' calls compile out).\n        cfg.file(lvgl_root.join(\"demos\").join(\"lv_demos.c\"));\n    }\n\n    cfg.compile(\"lvgl\");\n"
+    },
+    "metadata": {
+      "path": "rs_lvgl_sys/build.rs",
+      "line": 379,
+      "endLine": 383,
+      "fileSha256": "43e387d8e7cbf4abe6789332220c5c2ecfc05f3d13dc7783312fa9d8a1fe57a6",
+      "excerptSha256": "3290fc0911e4a107e1954e3ff3a87305cf33ae39aab0212abc6c205b8a2ed38d",
+      "excerpt": "    std::fs::write(out_path.join(\"bindings.rs\"), bindings).expect(\"Can't write bindings!\");\n    // Dependents that generate code from the bindings must read this file:\n    // a build-dependency on rs_lvgl_sys is compiled with its own features and\n    // may see a different widget set.\n    println!(\"cargo:bindings={}\", out_path.join(\"bindings.rs\").display());\n"
+    },
+    "codegen": {
+      "path": "rs_lvgl/build.rs",
+      "line": 9,
+      "endLine": 55,
+      "fileSha256": "31d28d019049e8c7b882be9f8d2a67cbc52e0c7c2fac7b968c416c53a4417b0b",
+      "excerptSha256": "063ad7cf6c029b312bd0d25576eaf7284f8cb1ef9621e872d2c2e345b589b887",
+      "excerpt": "fn main() {\n    let out_path = PathBuf::from(env::var(\"OUT_DIR\").unwrap());\n    let rs = out_path.join(\"generated.rs\");\n\n    // Generate from the bindings of the rs_lvgl_sys this crate links against.\n    // The build-dependency copy is compiled with its own features and may\n    // have a different widget set (`minimal-config`).\n    println!(\"cargo:rerun-if-env-changed=DEP_LVGL_BINDINGS\");\n    let widgets_impl = match env::var(\"DEP_LVGL_BINDINGS\") {\n        Ok(path) => {\n            println!(\"cargo:rerun-if-changed={path}\");\n            std::fs::read_to_string(&path).expect(\"read rs_lvgl_sys bindings\")\n        }\n        Err(_) => rs_lvgl_sys::_bindgen_raw_src().to_string(),\n    };\n\n    // `lv_use_<widget>` for every optional widget the linked config enables.\n    let enabled = env::var(\"DEP_LVGL_WIDGETS\").unwrap_or_default();\n    let optional = env::var(\"DEP_LVGL_OPTIONAL_WIDGETS\").unwrap_or_default();\n    for name in optional.split(',').filter(|s| !s.is_empty()) {\n        let name = name.replace('-', \"_\");\n        println!(\"cargo:rustc-check-cfg=cfg(lv_use_{name})\");\n    }\n    for name in enabled.split(',').filter(|s| !s.is_empty()) {\n        let name = name.replace('-', \"_\");\n        println!(\"cargo:rustc-cfg=lv_use_{name}\");\n    }\n\n    let codegen = CodeGen::from(&widgets_impl).unwrap();\n    let widgets_impl: Vec<TokenStream> = codegen\n        .get_widgets()\n        .iter()\n        .flat_map(|w| w.code(&()))\n        .collect();\n\n    let code = quote! {\n        #(#widgets_impl)*\n    };\n\n    let mut file = File::create(rs).unwrap();\n    writeln!(\n        file,\n        \"/* automatically generated by rs_lvgl_codegen */\\n{}\",\n        code\n    )\n    .unwrap();\n}\n"
+    },
+    "features": {
+      "path": "rs_lvgl_ui/Cargo.toml",
+      "line": 21,
+      "endLine": 45,
+      "fileSha256": "c46f5e1d36d9b90e135605ad5a532ae836ebd8ebd008e1e235a1a4d6d8e447b5",
+      "excerptSha256": "48ab1b88060f7f1fde4c67d7f1e6b59e26f3782ca39b7b4d96c3f923ffab2022",
+      "excerpt": "[features]\n# `alloc` is the only capability required on bare-metal targets. It enables the\n# allocator-aware parts of the `rs_lvgl` crate; `rs_lvgl_ui` itself always requires\n# `alloc`.\ndefault = [\"alloc\", \"components\", \"widgets-all\", \"fonts-vendored\"]\nalloc = [\"rs_lvgl/alloc\"]\n# Composite components (`rs_lvgl_ui::components`): lists, panels, stack\n# navigation, dialogs and toasts built from plain nodes.\ncomponents = []\ninput-keypad = [\"rs_lvgl/input-keypad\"]\ninput-gridnav = [\"input-keypad\", \"rs_lvgl_sys/gridnav\"]\n# Host acceptance harness; requires the dedicated BUILTIN allocator config.\n# This does not select an allocator or change production defaults.\nleak-check = [\n    \"alloc\", \"components\", \"widgets-all\", \"fonts-vendored\", \"input-gridnav\",\n    \"widget-qrcode\", \"widget-barcode\", \"widget-gif\", \"widget-lottie\",\n    \"widget-ime-pinyin\", \"font-cjk-16\",\n]\n\n# Widgets. Obj, row, column, grid, label, button and custom nodes are always\n# available; every other view constructor needs its `widget-*` feature.\n# LVGL compiles only the enabled widgets (plus the ones they build on), so\n# disabling unused ones shrinks the firmware. `widgets-all` also keeps the\n# LVGL widgets that have no node (list, menu, win) for raw `rs_lvgl_sys`\n# use; with it disabled, enable them through `rs_lvgl_sys/widget-*`.\n"
+    },
+    "extensions": {
+      "path": "rs_lvgl_ui/Cargo.toml",
+      "line": 106,
+      "endLine": 113,
+      "fileSha256": "c46f5e1d36d9b90e135605ad5a532ae836ebd8ebd008e1e235a1a4d6d8e447b5",
+      "excerptSha256": "225219f5ff5bf1c8b8b0a36123d04a497fc24a23ae534392918759b55630e7a8",
+      "excerpt": "# Optional extensions are separate from widgets-all to preserve defaults.\nwidget-qrcode = [\"rs_lvgl_sys/widget-qrcode\"]\nwidget-barcode = [\"rs_lvgl_sys/widget-barcode\"]\nwidget-gif = [\"rs_lvgl_sys/widget-gif\"]\nwidget-lottie = [\"rs_lvgl_sys/widget-lottie\"]\nwidget-ime-pinyin = [\"rs_lvgl_sys/widget-ime-pinyin\", \"widget-keyboard\"]\nfont-cjk-14 = [\"rs_lvgl_sys/font-cjk-14\"]\nfont-cjk-16 = [\"rs_lvgl_sys/font-cjk-16\"]\n"
+    },
+    "layout": {
+      "path": "rs_lvgl_ui/src/constructors.rs",
+      "line": 29,
+      "endLine": 78,
+      "fileSha256": "ad5ab7a3f696afb86414381f875c994e8c0c0741bc2ea600d677025a26ed761a",
+      "excerptSha256": "2085448a53dcec4d9a42426ce134838f52317bb9cf85b1afb97a081714e05f52",
+      "excerpt": "/// An unstyled container for absolute positioning.\npub fn obj<M>() -> View<M> {\n    Node::new(WidgetKind::Obj)\n}\n\n/// A horizontal flex container with the supplied children.\n///\n/// Arrays and iterators preserve their iteration order. See [`column()`] for\n/// composition with named child views and ordinary helper functions.\npub fn row<M>(children: impl IntoIterator<Item = View<M>>) -> View<M> {\n    Node::new(WidgetKind::Row).children(children)\n}\n\n/// A vertical flex container with the supplied children.\n///\n/// Children in the normal flex flow appear from top to bottom in iteration\n/// order. Their sizes, spacing and alignment determine the pixel positions.\n/// Extracting a child into a variable or function does not change its position;\n/// the order passed to `column` determines placement.\n///\n/// ```\n/// use rs_lvgl_ui::prelude::*;\n///\n/// fn page_title<M>(text: &str, theme: &Theme) -> View<M> {\n///     label(text).style(Style::title(theme))\n/// }\n///\n/// fn settings_view(theme: &Theme) -> View<()> {\n///     let content = label(\"Notification preferences\");\n///     let title = page_title(\"Settings\", theme);\n///     column([title, content]).style(Style::default().gap(12))\n/// }\n/// # let _ = settings_view(&Theme::light());\n/// ```\n///\n/// A helper returns a view description; it does not create independent state or\n/// a render cache. Child order is separate from identity: use stable\n/// [`Key`](crate::Key) values for children that can be inserted, removed or\n/// reordered. The default `Key::Auto` matches by position among `Auto` siblings.\npub fn column<M>(children: impl IntoIterator<Item = View<M>>) -> View<M> {\n    Node::new(WidgetKind::Column).children(children)\n}\n\n/// A grid with column tracks, row tracks and child views.\npub fn grid<M>(\n    columns: impl IntoIterator<Item = GridTrack>,\n    rows: impl IntoIterator<Item = GridTrack>,\n    children: impl IntoIterator<Item = View<M>>,\n) -> View<M> {\n    Node::new(WidgetKind::Grid {\n"
+    },
+    "exports": {
+      "path": "rs_lvgl_ui/src/lib.rs",
+      "line": 85,
+      "endLine": 131,
+      "fileSha256": "c80107680b522a06405117539ddaabdb003a0f2d6c19057afa22994a043192d5",
+      "excerptSha256": "4906a4960f31fe1d2e57126df922060fc7be1249f5a0bdc865e62429837bc205",
+      "excerpt": "mod app;\nmod constructors;\npub use constructors::*;\n#[cfg(feature = \"components\")]\npub mod components;\nmod custom;\nmod events;\n#[cfg(feature = \"input-keypad\")]\nmod focus;\n#[cfg(feature = \"input-gridnav\")]\nmod gridnav;\npub mod prelude;\n#[cfg(feature = \"input-gridnav\")]\npub use gridnav::{GridNavigation, NavigationAxis};\nmod extensions;\nmod node;\nmod reconciler;\nmod scroll;\npub use extensions::*;\nmod graphics;\npub use graphics::Snapshot;\n#[cfg(feature = \"widget-canvas\")]\nmod canvas;\n#[cfg(feature = \"widget-canvas\")]\npub use canvas::{Canvas, DrawCommand};\nmod screens;\npub use screens::{ScreenEffect, ScreenTransition, Screens};\npub mod symbol;\nmod theme;\nmod widgets;\n\npub use app::{App, DrainStats, Ui, UiStats};\npub use custom::{CustomObject, CustomWidget, CustomWidgetKind};\npub use events::{Event, GestureDirection, InputEvent, PointerEvent, ScrollOffset};\npub use node::{\n    table_cell, Align, CalendarDate, ChartSeries, ChartType, Color, EventHandler, FlexAlign, Font,\n    GridAlign, GridCell, GridTrack, Handlers, ImageSource, Key, LabelLongMode, Node, Part,\n    RawImage, RollerMode, ScrollDir, Size, Span, State, TextAlign, TextChangedHandler, Tile,\n    ValueChangedHandler, WidgetKind, ANIM_IMAGE_MAX_FRAMES, ANIM_REPEAT_INFINITE,\n    SPINBOX_MAX_DIGITS, TABLE_MAX_CELLS_PER_AXIS,\n};\npub use scroll::{ScrollSnap, ScrollbarMode};\nmod animation;\npub use animation::{Animation, AnimationProperty, Easing, StyleTransition, TransitionProperty};\nmod style_properties;\npub use style_properties::{BlendMode, GradientDirection, TextDecoration};\npub use theme::{Style, Theme};\n"
+    },
+    "display": {
+      "path": "website/playground/browser.rs",
+      "line": 65,
+      "endLine": 111,
+      "fileSha256": "f2e6b8374db9707bd0065a51b880fa59e9bcdab399a0b63c9c8bce7bb185db20",
+      "excerptSha256": "6e48ca92ab116fa1fac81bb56634c1534e435a4896f191c4275401a6cb9d4eb7",
+      "excerpt": "        let pixels = state.pixels.clone();\n        let generation = state.generation.clone();\n        state.display = Some(\n            rs_lvgl::Display::register::<_, 10240>(width, height, move |refresh| {\n                let mut pixels = pixels.borrow_mut();\n                let area = &refresh.area;\n                let row_width = (area.x2 - area.x1 + 1) as usize;\n                for y in area.y1..=area.y2 {\n                    for x in area.x1..=area.x2 {\n                        let color = refresh.colors\n                            [(y - area.y1) as usize * row_width + (x - area.x1) as usize];\n                        let offset = ((y as u32 * width + x as u32) * 4) as usize;\n                        pixels[offset..offset + 4].copy_from_slice(&[\n                            color.r(),\n                            color.g(),\n                            color.b(),\n                            255,\n                        ]);\n                    }\n                }\n                generation.set(generation.get().wrapping_add(1));\n            })\n            .map_err(|e| format!(\"display:{e}\"))?,\n        );\n        let theme = if dark {\n            PreviewTheme::dark()\n        } else {\n            PreviewTheme::light()\n        };\n        state.ui = Some(\n            Ui::new(state.display.as_ref().unwrap(), theme).map_err(|e| format!(\"mount:{e}\"))?,\n        );\n        let ui = state.ui.as_mut().unwrap();\n        ui.mount(&state.app).map_err(|e| format!(\"mount:{e}\"))?;\n        // SAFETY: callbacks borrow this stable Input box synchronously. Devices\n        // are removed before the box/display, including partial initialization.\n        unsafe {\n            let data = (&mut *state.input as *mut Input).cast();\n            let mouse =\n                NonNull::new(rs_lvgl_sys::lv_indev_create()).ok_or(\"pointer allocation failed\")?;\n            state.mouse = Some(mouse);\n            rs_lvgl_sys::lv_indev_set_type(\n                mouse.as_ptr(),\n                rs_lvgl_sys::lv_indev_type_t_LV_INDEV_TYPE_POINTER,\n            );\n            rs_lvgl_sys::lv_indev_set_user_data(mouse.as_ptr(), data);\n            rs_lvgl_sys::lv_indev_set_read_cb(mouse.as_ptr(), Some(read_pointer));\n"
+    },
+    "time": {
+      "path": "website/playground/browser.rs",
+      "line": 127,
+      "endLine": 135,
+      "fileSha256": "f2e6b8374db9707bd0065a51b880fa59e9bcdab399a0b63c9c8bce7bb185db20",
+      "excerptSha256": "95df113807b9f5f2b21adb91b82588e7d8e6a7ee51dc5bbcb89072f8289e4c33",
+      "excerpt": "impl<A: PreviewApp> Instance for BrowserApp<A> {\n    fn frame(&mut self, elapsed: u32) -> Result<(), String> {\n        rs_lvgl::tick_inc(Duration::from_millis(elapsed.into()));\n        let ui = self.ui.as_mut().unwrap();\n        ui.timer_handler();\n        ui.drain(&mut self.app, 128)\n            .map_err(|e| format!(\"update:{e}\"))?;\n        ui.tick(elapsed).map_err(|e| format!(\"animation:{e}\"))?;\n        Ok(())\n"
+    },
+    "suppress-write": {
+      "path": "rs_lvgl_ui/src/reconciler.rs",
+      "line": 346,
+      "endLine": 373,
+      "fileSha256": "0bded8975b8ef593b9502e10d5bf6631dab5ef80f360605b903ac2d971cc46cc",
+      "excerptSha256": "338d99de8bdf93c2fdff47654df66e9848db41d5207e09332b0642a9442face1",
+      "excerpt": "        _ => (None, None),\n    };\n    if let Some(cell) = grid_cell {\n        widgets::apply_grid_cell(obj, cell);\n    }\n    let pages = match &props {\n        #[cfg(feature = \"widget-tabview\")]\n        Props::Tabview { tabs, active } => {\n            if let Some(slot) = slot_ref {\n                slot.suppress();\n            }\n            let pages = widgets::tabview_pages(obj, tabs, *active);\n            if let Some(slot) = slot_ref {\n                slot.clear_suppress();\n            }\n            Some(pages)\n        }\n        #[cfg(feature = \"widget-tileview\")]\n        Props::Tileview { tiles, active } => {\n            if let Some(slot) = slot_ref {\n                slot.suppress();\n            }\n            let pages = widgets::tileview_pages(obj, tiles, *active);\n            if let Some(slot) = slot_ref {\n                slot.clear_suppress();\n            }\n            Some(pages)\n        }\n"
+    },
+    "suppress-event": {
+      "path": "rs_lvgl_ui/src/events.rs",
+      "line": 381,
+      "endLine": 397,
+      "fileSha256": "65c733f82c3cf312aee1dd65eafc696f2c0a635eee18a3e8562d9f2ee02c3c35",
+      "excerptSha256": "41bb2761fbf8a21522815652620a6330f404b86111f99f037aef5fe8a715c687",
+      "excerpt": "    pub(crate) fn suppress(&self) {\n        self.suppress_next.set(true);\n    }\n\n    pub(crate) fn clear_suppress(&self) {\n        self.suppress_next.set(false);\n    }\n\n    fn take_suppression(&self, code: u32) -> bool {\n        // Only a value-changed event consumes the flag. Other events emitted\n        // by the same programmatic write (layout/style/child changes) must not\n        // swallow the suppression meant for the value event.\n        if code == rs_lvgl_sys::lv_event_code_t_LV_EVENT_VALUE_CHANGED && self.suppress_next.get() {\n            self.suppress_next.set(false);\n            return true;\n        }\n        false\n"
+    }
+  },
+  "claims": {
+    "data-model": {
+      "settings": [
+        "switch"
+      ],
+      "app": [
+        "app"
+      ],
+      "ui": [
+        "ownership",
+        "drain",
+        "render"
+      ],
+      "message": [
+        "switch"
+      ],
+      "view": [
+        "alias",
+        "descriptor",
+        "handlers"
+      ],
+      "theme": [
+        "ownership",
+        "app"
+      ]
+    },
+    "message-flow": {
+      "switch": [
+        "handlers",
+        "switch"
+      ],
+      "handler": [
+        "event-map",
+        "switch"
+      ],
+      "queue": [
+        "queue"
+      ],
+      "update": [
+        "drain",
+        "switch"
+      ],
+      "view": [
+        "switch",
+        "drain"
+      ],
+      "theme": [
+        "app",
+        "ownership"
+      ],
+      "render": [
+        "render",
+        "suppress-write",
+        "suppress-event"
+      ],
+      "failure": [
+        "render"
+      ]
+    },
+    "build-path": {
+      "config": [
+        "config",
+        "target"
+      ],
+      "sources": [
+        "native"
+      ],
+      "bindgen": [
+        "bindgen"
+      ],
+      "compile": [
+        "target",
+        "native"
+      ],
+      "bindings": [
+        "metadata"
+      ],
+      "metadata": [
+        "bindgen",
+        "metadata"
+      ],
+      "library": [
+        "native"
+      ],
+      "codegen": [
+        "codegen"
+      ],
+      "api": [
+        "codegen"
+      ],
+      "app": [
+        "exports",
+        "display"
+      ]
+    },
+    "capabilities": {
+      "application": [
+        "exports"
+      ],
+      "core": [
+        "exports"
+      ],
+      "layout": [
+        "layout"
+      ],
+      "basic": [
+        "features",
+        "layout"
+      ],
+      "state": [
+        "app",
+        "ownership",
+        "alias"
+      ],
+      "optional": [
+        "features"
+      ],
+      "widgets": [
+        "features"
+      ],
+      "composites": [
+        "features"
+      ],
+      "media": [
+        "extensions",
+        "exports"
+      ],
+      "focus": [
+        "features"
+      ],
+      "platform": [
+        "display",
+        "time"
+      ],
+      "display": [
+        "display"
+      ],
+      "time": [
+        "time"
+      ]
+    }
+  }
+}

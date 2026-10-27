@@ -1,0 +1,157 @@
+---
+title: 挂载与更新
+description: 把 App 挂载到显示，在平台循环中处理消息、计时和更新，并在原生显示销毁前卸载界面。
+---
+
+import { GuideLinks } from '../../../components/GuideLinks';
+
+# 挂载与更新
+
+浏览器预览和 SDL 示例已经提供运行循环。接入自己的设备时，需要在显示上创建 `Ui`，挂载应用，再持续处理输入和更新。原生显示必须在整个挂载期间保持有效。
+
+## 状态与视图
+
+`App` trait 包含一个消息类型、一次状态迁移和一个视图：
+
+- `type Msg: Clone + 'static`
+- `fn update(&mut self, msg: Self::Msg)`
+- `fn view(&self, theme: &Theme) -> View<Self::Msg>`
+- `fn overlay(&self, theme: &Theme) -> Option<View<Self::Msg>>`（可选）
+
+`update` 只修改状态，不访问 LVGL，也不阻塞。`view` 读取状态并返回新的树，不能修改状态。点击处理器保存消息，并在每次点击时克隆它，因此消息必须实现 `Clone`。
+
+```rust
+use rs_lvgl_ui::prelude::*;
+
+#[derive(Clone)]
+enum Msg {
+    Increment,
+    Decrement,
+    Reset,
+}
+
+struct Counter {
+    value: i32,
+}
+
+impl App for Counter {
+    type Msg = Msg;
+
+    fn update(&mut self, msg: Msg) {
+        match msg {
+            Msg::Increment => self.value += 1,
+            Msg::Decrement => self.value -= 1,
+            Msg::Reset => self.value = 0,
+        }
+    }
+
+    fn view(&self, theme: &Theme) -> View<Msg> {
+        column([
+            label("Counter").style(Style::title(theme)),
+            row([
+                label(format!("{}", self.value))
+                    .key(Key::Named("value"))
+                    .style(Style::title(theme).flex_grow(1)),
+                button("+1")
+                    .key(Key::Named("increment"))
+                    .style(Style::accent(theme))
+                    .on_click(Msg::Increment),
+                button("-1")
+                    .key(Key::Named("decrement"))
+                    .on_click(Msg::Decrement),
+            ])
+            .style(Style::surface(theme).width(Size::Percent(100)).gap(12)),
+            button("Reset")
+                .key(Key::Named("reset"))
+                .on_click(Msg::Reset),
+        ])
+        .style(Style::screen(theme).pad(16).gap(12))
+    }
+}
+```
+
+片段只包含 `App` 实现。视图保持纯粹：`Counter` 以不可变借用传入，每个按钮只发送消息，不直接修改状态。`Style::screen` 铺满显示区域，行使用主题表面，数值标签占据剩余空间，`+1` 按钮使用扁平强调色预设。包含显示注册、`drain` 调用与清理步骤的完整程序见 [rs_lvgl_ui/examples/settings.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/settings.rs)。
+
+## 挂载到显示并驱动更新
+
+显示与输入设备的注册由平台负责。平台在存活的显示上创建 `Ui`，挂载首个视图，然后驱动三个调用：
+
+```rust
+let mut ui = Ui::new(&display, Theme::dark())?;
+let mut app = Counter { value: 0 };
+ui.mount(&app)?;
+
+loop {
+    ui.timer_handler(); // 派发原生计时器与输入回调
+    ui.drain(&mut app, 32)?; // 逐条 App::update，然后一次 view/协调
+    ui.tick(elapsed_ms)?; // 仅推进自定义控件生命周期
+}
+```
+
+循环体是可复用的部分；`display`、`elapsed_ms` 与帧节奏由平台在该片段之外提供。`Ui::drain` 最多处理指定数量的消息，然后在以下任一条件成立时协调一次：处理过消息、主题变化或 `mark_dirty` 置位了脏标记、尚未挂载任何树。空闲的 `drain` 不会调用 `App::view`。消息路径之外变化的状态（例如在 `view` 中读取的时钟或传感器）需要调用 `Ui::update(&app)` 或 `Ui::mark_dirty()`。
+
+`timer_handler` 封装 `lv_timer_handler` 并返回其结果。这一层的事件回调只入队消息，下一次 `drain` 才会应用。同一次调用中的其他原生计时器（例如动画或平台计时器）会直接执行 LVGL 代码，同样受单 UI 线程规则约束。`tick(elapsed_ms)` 推进带生命周期的自定义控件，不重建描述树。嵌套调用 `timer_handler` 返回 `0`，嵌套修改返回 `UiError::Reentrant`。
+
+消息队列有容量上限。`Ui::new` 使用 `DEFAULT_QUEUE_CAPACITY`（64），`Ui::with_capacity` 接受显式容量；队列满时丢弃最旧的消息并增加丢弃计数。`Ui::post` 供平台代码投递消息。`DrainStats` 报告 `processed`、`dropped` 以及本次调用是否执行了 `reconciled`；`Ui::stats` 报告累计计数。
+
+`Ui` 既不是 `Send` 也不是 `Sync`。所有 UI 方法和 LVGL 访问都留在 UI 线程；该 crate 不注册显示、输入设备、计时器或 RTOS 任务。渲染与消息到达并发的平台必须把这两类操作串行化到该线程。
+
+## 处理更新错误
+
+描述校验在修改原生树之前运行。它会拒绝重复的兄弟键、越界的值、含内部 NUL 的标签文本、在非容器上添加的子节点、非法滚动偏移以及不支持的事件目标。校验失败不会改变已挂载的树。
+
+校验通过后，创建或更新期间的 LVGL 分配失败返回 `UiError::Allocation`，并删除受影响的部分子树。下一次 `update`、`mount` 或 `drain` 会依据 `App::view` 重建它。`UiError` 还包含 `DisplayUnavailable`（显示没有活动屏幕）与 `Reentrant`（在 UI 方法执行期间再次修改）。
+
+该 crate 在测试之外按 `no_std` 编译，并且需要 `alloc`；`no_std` 不代表不分配内存。`View` 值使用 `String`、`Vec` 和装箱的处理器，UI 队列与根对象也会分配。`alloc` 特性启用 `rs_lvgl` 依赖中依赖分配器的部分。目标平台提供分配器；LVGL 分配失败会以上述 `Allocation` 错误报告。
+
+## `no_std` 与内存分配
+
+- `rs_lvgl` 和 `rs_lvgl_ui` 在非测试构建中按 `no_std` 编译。`std` 出现在宿主示例及其事件循环中，不属于库的运行要求。
+- `no_std` 不等于不使用内存分配。UI 层始终需要 `alloc`，`alloc` 特性启用 `rs_lvgl` 中依赖分配器的 API。目标平台必须提供可用的分配器。
+- LVGL 的默认配置使用 CLIB 分配器。启用 `lvgl_alloc` 后，Rust 全局分配转发到 `lv_malloc` 与 `lv_free`；同一对象的内存分配与释放必须使用同一套策略。
+- 裸机目标启用 `no-autoinit`，并在创建显示前调用 `rs_lvgl::init()`。`rs_lvgl_ui` 不注册显示、输入设备、计时器或 RTOS 任务；平台负责提供这些对象，并驱动 `timer_handler`、`drain` 与 `Ui::tick`。
+
+```toml
+rs_lvgl = { path = "../rs_lvgl/rs_lvgl", default-features = false, features = ["alloc"] }
+[dependencies.rs_lvgl_ui]
+path = "../rs_lvgl/rs_lvgl_ui"
+default-features = false
+features = [
+    "alloc", "no-autoinit", "components", "widget-slider", "font-montserrat-16",
+]
+```
+
+## 卸载界面与释放资源
+
+`Ui::unmount` 在显示、屏幕和输入设备仍然存活时，删除已挂载的视图与覆盖层，释放焦点组并解绑其输入设备。原生显示必须比 UI 树存活更久，因此进行任何原生清理之前先卸载 UI：
+
+```rust
+ui.unmount();
+drop(ui);
+```
+
+[settings.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/settings.rs) 在删除内存显示前执行这一顺序；[components.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/components.rs) 通过 `deinit` 结束 SDL 应用。显示注册与生命周期见[接入设备](./native-integration.mdx)。
+
+调用 `Ui::unmount` 能让清理顺序保持明确：在显示确定存活时移除视图、覆盖层和焦点组。丢弃已挂载的 `Ui` 也会删除根节点和焦点组，但这取决于外层作用域的析构顺序，显示删除可能先发生；需要控制清理顺序时应显式调用 `unmount`。已卸载的 `Ui` 不再持有原生状态，之后可以随时丢弃。再次 `mount` 会创建新的根节点，输入设备需要重新绑定。已挂载的 `Ui` 不得比原生显示存活更久：它的析构会调用 LVGL。
+
+丢弃 `Display` 句柄不会删除原生显示。该句柄只是别名：显示、其屏幕对象、刷新回调与缓冲区会保留到原生删除为止。丢弃最后一个句柄后，显示仍然注册；其回调与缓冲区最终由 `deinit` 或执行删除的原生代码释放，而不是由句柄释放。UI 树也必须在原生删除之前卸载。句柄消失后，已卸载的 `Ui` 不再持有原生状态，可以直接丢弃。
+
+`Display::delete` 与 `rs_lvgl::deinit` 都是 unsafe；上面的两行片段不是它们的清理配方。调用任一函数之前：
+
+- 所有 `Ui` 都已卸载；其他能访问该显示的别名、屏幕、控件、动画与输入设备都已释放或失效。
+- 渲染已完成，包括异步绘制任务、DMA 或 GPU 传输以及待处理的刷新。
+- 没有渲染、刷新、计时器、事件或输入回调正在执行；任何析构函数或删除回调都不得刷新、使用或递归删除该显示，也不得调用 `deinit`。
+- `Display::delete` 之后，任何别名、屏幕、控件或回调都不得访问该显示。`deinit` 之后，即使再次 `init()`，也不得访问已有的 LVGL 值，包括通过它们的析构函数访问。
+
+## 可运行示例
+
+[settings.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/settings.rs) 是结构相同的完整宿主示例：它注册一个 320 x 240 的离屏内存显示，创建 `Ui`，挂载设置界面，投递四条消息并排空，打印已挂载节点数与协调计数，断言最终状态，然后卸载并删除显示。示例不包含裸指针，也不调用 `rs_lvgl_sys`。
+
+```sh
+cargo run -p rs_lvgl_ui --example settings
+```
+
+该示例目标要求 `widget-slider` 与 `widget-switch`，默认特性集同时包含两者。裁剪构建需要显式启用这两个特性。内存显示只在离屏绘制，因此命令不会打开窗口。
+
+
+<GuideLinks items={["device", "events"]} />

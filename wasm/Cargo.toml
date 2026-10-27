@@ -1,0 +1,21 @@
+[package]
+name = "rs-lvgl-browser-studio"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Independent documentation consumer; no change to embedded library defaults.
+[workspace]
+
+[dependencies]
+rs_lvgl = { path = "../source/rs_lvgl", default-features = false, features = ["alloc", "unsafe_no_autoinit"] }
+rs_lvgl_sys = { path = "../source/rs_lvgl_sys" }
+rs_lvgl_ui = { path = "../source/rs_lvgl_ui", features = [
+    "input-gridnav", "widget-qrcode", "widget-barcode", "widget-gif",
+    "widget-lottie", "widget-ime-pinyin", "font-cjk-16",
+    "font-montserrat-20", "font-montserrat-32", "no-autoinit",
+] }
+
+[profile.release]
+opt-level = "s"
+panic = "abort"

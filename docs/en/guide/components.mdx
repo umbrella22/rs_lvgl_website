@@ -1,0 +1,237 @@
+---
+title: Reuse components
+description: Reuse views with ordinary Rust functions, then compose lists, panels, navigation, dialogs and toasts.
+---
+
+import { NativeExample } from '../../../components/NativeExample';
+import { GuideLinks } from '../../../components/GuideLinks';
+
+# Reuse components
+
+When several screens share a title, list row or button group, extract a function that returns `View<M>`. The built-in `components` module composes widgets in the same way to provide lists, navigation and overlays.
+
+## Start with a reusable view function
+
+A component can begin as an ordinary Rust function returning `View<M>`. Extracting a title gives its typography and spacing one shared definition. The parent still decides where that returned view appears.
+
+<NativeExample id="title" />
+
+Edit the helper once to change every title built with it. Each call creates a fresh description; the helper adds no independent state or render cache. State remains in the application and reaches the helper through its arguments. A function with its own message type can adapt its subtree with `View::map`.
+
+## Pass data in and messages out
+
+Pass the data a title, list or dialog needs through function arguments. A component returns a `View<M>` and sends messages for the application to handle. Use `View::map` to adapt a subtree with its own message type.
+
+Navigation and toasts also provide plain state structs such as `NavState<P>` and `Toasts`. Store them in the app, call their state methods in `update`, and read the result in `view`. Components use the same keys, styles and event rules as other views.
+
+## Lists and panels
+
+A data-driven list needs both an order and stable item identities. The same identifiers must follow the items when the collection changes.
+
+<NativeExample id="keyed-list" />
+
+`list::list(theme, items)` is a scrollable column with the theme surface, 4 px padding, 2 px gaps and full width. `list::section(theme, title)` adds a muted group heading. `ListItem::new(text)` adds a row with these optional parts:
+
+- `.icon(symbol::WIFI)` reserves a fixed 20 px glyph slot.
+- `.detail("Home")` appends muted trailing text; `.trailing(switch(...))` replaces it with an arbitrary node. An interactive trailing widget keeps its own handler, and a click on it does not also click the row.
+- `.chevron(true)` appends a right chevron for a navigation row.
+- `.selected(true)` draws the row with the theme accent through `State::CHECKED`. Selection is application state, so the next view decides it.
+- `.on_click(msg)` makes the row clickable and adds a pressed highlight. Rows without a click handler are not clickable.
+
+`ListItem::view(theme)` returns `View<M>`. Keys are the application's responsibility; a list built from runtime data keys each row with `Key::Id`.
+
+`Panel::new(title)` is a card with a header row and a content column. `.action(node)` appends header actions, usually `panel::icon_button(theme, symbol::SAVE, msg)`; `.child` and `.children` fill the content area. The panel fills its parent's width. Its content scrolls only when the panel has a bounded height, for example `.style(Style::default().flex_grow(1).height(Size::Percent(100)))`. Without a height it grows with its content.
+
+## Navigation and file entries
+
+`NavState::new(root)` starts a non-empty page stack. `current()`, `pages()`, `depth()` and `can_go_back()` read it; `push`, `back` and `update(NavMsg<P>)` change it. `NavMsg::Push` adds a page, `Back` pops it, `Root` truncates to the root and `Replace` swaps the current page. `back()` returns `false` on the root page.
+
+`nav::view(&state, theme, title, page, back_msg)` renders a header, a back button while the stack is deeper than the root, and the supplied page. The body is keyed by stack depth, so a new page is created fresh instead of morphing the previous page's widgets and scroll position. The title is a render argument, not stored in `NavState`. `nav::link(theme, text, msg)` is a list row with a chevron that sends the navigation message.
+
+`file_explorer::view(theme, location, parent, entries)` composes a location header and the same list rows from `FileEntry::file` and `FileEntry::directory` values. Each entry carries a stable `id`, display `name` and activation message; duplicate IDs produce the usual `DuplicateKey` error. The component performs no filesystem I/O. The application reads directories in `update` or its own task and supplies the resulting entries.
+
+## Overlays
+
+`Dialog::new(title)` returns a centered card over a full-screen dimming backdrop. `.text` adds a paragraph, `.child` adds arbitrary body content and `.button(text, msg)` or `.primary(text, msg)` adds footer actions. `.on_dismiss(msg)` makes a backdrop click send that message. The card width defaults to 80 percent of the display, capped at 360 px; `.width(Size)` overrides it. The backdrop absorbs pointer input, so the view beneath is not usable while the dialog is shown. With `input-keypad`, the dialog root is also a modal focus scope; without that feature it remains a pointer overlay.
+
+`toast::view(&toasts, theme, dismiss)` stacks keyed labels at the bottom of the display, newest last. Each toast is keyed by its queue id, so one expiry keeps the other labels. A click sends `dismiss(id)`. `Toasts::push(text, duration_ms)` and `push_kind(kind, text, duration_ms)` return the id; `dismiss(id)`, `clear()` and `with_max_visible(n)` manage the queue. `advance(elapsed_ms)` counts down and removes expired entries, returning whether the visible set changed.
+
+Toasts have no internal timer. The application advances them from a message, for example a tick posted by the platform while `!toasts.is_empty()`. The component renders whatever is currently in the queue.
+
+`layers(children)` composes several overlays into one full-size, transparent, non-clickable container. Later children draw above earlier ones. A child is placed with `Style::align` and `Style::offset`; input falls through the container except where a child is hit. Dialogs and toasts are returned from `App::overlay` and deleted when the view no longer returns them.
+
+## A settings screen
+
+The following is the `App` portion of a settings screen using navigation, a list, a panel, a confirmation dialog and toasts. The complete host program is [rs_lvgl_ui/examples/components.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/components.rs).
+
+<details>
+<summary>Show the complete settings App</summary>
+
+```rust
+use rs_lvgl_ui::components::{
+    dialog::Dialog,
+    layers,
+    list::{self, ListItem},
+    nav::{self, NavMsg, NavState},
+    panel::{self, Panel},
+    toast::{self, ToastKind, Toasts},
+};
+use rs_lvgl_ui::prelude::*;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Page {
+    Root,
+    Display,
+}
+
+#[derive(Clone)]
+enum Msg {
+    Nav(NavMsg<Page>),
+    ToggleWifi,
+    AskReset,
+    CancelReset,
+    Reset,
+    Save,
+    DismissToast(u64),
+    Tick(u32),
+}
+
+struct Settings {
+    nav: NavState<Page>,
+    wifi: bool,
+    confirm_reset: bool,
+    toasts: Toasts,
+}
+
+impl Settings {
+    fn new() -> Self {
+        Self {
+            nav: NavState::new(Page::Root),
+            wifi: true,
+            confirm_reset: false,
+            toasts: Toasts::with_max_visible(3),
+        }
+    }
+
+    fn root_page(&self, theme: &Theme) -> View<Msg> {
+        list::list(
+            theme,
+            [
+                ListItem::new("Wi-Fi")
+                    .icon(symbol::WIFI)
+                    .trailing(switch(self.wifi).on_value_changed(|_| Msg::ToggleWifi))
+                    .view(theme)
+                    .key(Key::Named("wifi")),
+                nav::link(theme, "Display", Msg::Nav(NavMsg::Push(Page::Display)))
+                    .key(Key::Named("display")),
+                ListItem::new("Reset")
+                    .on_click(Msg::AskReset)
+                    .view(theme)
+                    .key(Key::Named("reset")),
+            ],
+        )
+    }
+
+    fn display_page(&self, theme: &Theme) -> View<Msg> {
+        Panel::new("Display")
+            .action(panel::icon_button(theme, symbol::SAVE, Msg::Save))
+            .child(label("Only Wi-Fi is configurable on this screen."))
+            .view(theme)
+    }
+}
+
+impl App for Settings {
+    type Msg = Msg;
+
+    fn update(&mut self, msg: Msg) {
+        match msg {
+            Msg::Nav(msg) => self.nav.update(msg),
+            Msg::ToggleWifi => self.wifi = !self.wifi,
+            Msg::AskReset => self.confirm_reset = true,
+            Msg::CancelReset => self.confirm_reset = false,
+            Msg::Reset => {
+                self.confirm_reset = false;
+                self.wifi = true;
+                self.nav.update(NavMsg::Root);
+            }
+            Msg::Save => {
+                self.toasts
+                    .push_kind(ToastKind::Success, "Settings saved", 2000);
+            }
+            Msg::DismissToast(id) => self.toasts.dismiss(id),
+            Msg::Tick(elapsed) => {
+                self.toasts.advance(elapsed);
+            }
+        }
+    }
+
+    fn view(&self, theme: &Theme) -> View<Msg> {
+        let page = match self.nav.current() {
+            Page::Root => self.root_page(theme),
+            Page::Display => self.display_page(theme),
+        };
+        nav::view(&self.nav, theme, "Settings", page, Msg::Nav(NavMsg::Back))
+    }
+
+    fn overlay(&self, theme: &Theme) -> Option<View<Msg>> {
+        let mut stack = Vec::new();
+        if self.confirm_reset {
+            stack.push(
+                Dialog::new("Reset settings?")
+                    .text("Wi-Fi returns to its default value.")
+                    .button("Cancel", Msg::CancelReset)
+                    .primary("Reset", Msg::Reset)
+                    .on_dismiss(Msg::CancelReset)
+                    .view(theme),
+            );
+        }
+        if !self.toasts.is_empty() {
+            stack.push(toast::view(&self.toasts, theme, Msg::DismissToast));
+        }
+        (!stack.is_empty()).then(|| layers(stack))
+    }
+}
+```
+
+</details>
+
+The dialog and the toasts are both overlay state: `overlay` returns them only while `confirm_reset` is set or the queue is non-empty, and returning `None` deletes the overlay tree. The platform posts `Msg::Tick(elapsed)` while toasts are visible; the example does this in its frame loop and skips the message when the queue is empty.
+
+## Choose a composite component
+
+The `components` feature, enabled by default, adds `rs_lvgl_ui::components`: composite screens built from ordinary `View` trees. Components hold no native handles. Every view returns `View<M>` and keeps the same keys, controlled values, styles and `View::map` behavior as a hand-written view. A build with `default-features = false` must add `components` explicitly.
+
+The module covers the layouts LVGL 9.6 deprecates (`lv_list`, `lv_win`, `lv_menu`) and the overlay patterns an application needs. Components use the core widgets, so enabling `components` does not pull in optional widget features. A screen that places a switch in a list row also needs `widget-switch`.
+
+| Module | State | Entry points |
+| --- | --- | --- |
+| `list` | stateless | `list`, `section`, `ListItem` with icon, detail or trailing node, chevron, selection and click |
+| `panel` | stateless | `Panel` with title, header actions and content; `icon_button` |
+| `nav` | application-owned | `NavState<P>`, `NavMsg<P>`, `link`, `view` |
+| `file_explorer` | application-supplied entries | `FileEntry`, `view` |
+| `dialog` | stateless overlay | `Dialog` with body content, footer buttons and backdrop dismiss |
+| `toast` | application-owned | `Toasts`, `ToastKind`, `view` |
+| `layers` | overlay composition | `layers(children)` |
+
+A stateless builder stores no application state; visibility, selection and data remain in `App`. The stateful types are plain structs: the application stores `NavState<P>` and `Toasts`, changes them in `update`, and renders them read-only in `view`.
+
+## Themes and feature boundaries
+
+Components read color and font tokens from the `Theme` passed to `view`; `Theme::dark()` and `Theme::light()` provide the built-in sets. The theme does not replace LVGL's native theme. Components mostly use neutral nodes and explicit token styles, so a native light-theme shadow does not leak into a dark screen. `Theme::title_font` is Montserrat 28 when `font-montserrat-28` is enabled and Montserrat 14 otherwise.
+
+- `components` is in the default feature set. Disabling defaults removes the module until the feature is re-added.
+- `input-keypad` adds focus groups, `View::focusable`/`modal` and dialog modal scoping. It does not activate focus for a pointer-only screen; see [Input and events](./input-and-events.mdx).
+- `widget-switch` is needed only when a row or panel contains `switch`. The composite module itself does not require it.
+- `simulator` is for host examples and the studio; it is not a library dependency of the components.
+
+## Runnable example
+
+[components.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/components.rs) uses navigation, list rows, a panel, a reset dialog and success toasts in one application. It also shows toasts advancing from a tick message posted only while the queue is non-empty.
+
+```sh
+cargo run -p rs_lvgl_ui --example components --features simulator
+```
+
+The example target requires `simulator`, `components` and `widget-switch`. It opens an SDL window and needs SDL2 and an interactive display; `COMPONENTS_FRAMES=<n>` runs a bounded smoke pass instead. The command requires a display and is not a headless check.
+
+<GuideLinks items={["device", "features"]} />

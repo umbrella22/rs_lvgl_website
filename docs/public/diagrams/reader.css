@@ -1,0 +1,44 @@
+/* Documentation owns presentation; the native reader retains node exploration. */
+.toolbar,
+.diagram-nav {
+  display: none !important;
+}
+.diagram-container {
+  --viewer-chrome-reserve: 0px;
+  padding-bottom: 1rem !important;
+}
+
+/* Keep inline overviews animated. Archify's embed mode intentionally pauses them. */
+html[data-docs-overview] body {
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--bg);
+}
+html[data-docs-overview] .header,
+html[data-docs-overview] .cards,
+html[data-docs-overview] .reader-rail,
+html[data-docs-overview] .overview-map,
+html[data-docs-overview] .focus-chip,
+html[data-docs-overview] .route-probe,
+html[data-docs-overview] .semantic-lens,
+html[data-docs-overview] .diagram-guide,
+html[data-docs-overview] .node-finder,
+html[data-docs-overview] .node-outline {
+  display: none !important;
+}
+html[data-docs-overview] .container {
+  max-width: none;
+}
+html[data-docs-overview] .diagram-container {
+  padding: 0.5rem !important;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+html[data-docs-overview] .diagram-container > svg {
+  min-width: 0 !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+}

@@ -1,0 +1,107 @@
+import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { wasmRoot, verifyWasm } from "./wasm-assets.mjs";
+import { repositoryRoot, sha256, encodePng } from "./playground-native.mjs";
+
+const manifest = await verifyWasm();
+const { default: createStudio } = await import(pathToFileURL(path.join(wasmRoot, "studio.mjs")));
+const wasmBinary = await fs.readFile(path.join(wasmRoot, "studio.wasm"));
+const directory = path.join(repositoryRoot, "target/rspress-wasm/acceptance");
+await fs.mkdir(directory, { recursive: true });
+const results = [];
+const passes = process.argv.includes("--three-passes") ? 3 : 1;
+for (let pass = 1; pass <= passes; pass++) {
+  const native = await createStudio({ wasmBinary });
+  const state = (field) => native._studio_state(field);
+  const advance = (count = 8) => { for (let i = 0; i < count; i++) assert.equal(native._studio_frame(20), 0); };
+  const pixels = () => Buffer.from(native.HEAPU8.subarray(native._studio_pixels(), native._studio_pixels() + 1280 * 860 * 4));
+  const press = (x, y, down) => { assert.equal(native._studio_pointer(x, y, Number(down)), 0); advance(3); };
+  const click = (x, y) => { press(x, y, true); press(x, y, false); };
+  const page = (index) => { assert.equal(native._studio_command(0, index), 0); advance(); assert.equal(state(0), index); };
+  const cases = [];
+  function passed(name) { cases.push(name); console.log(`PASS ${pass}: ${name}`); }
+  assert.equal(native._studio_frame(20), -1);
+  assert.equal(native._studio_init(), 0);
+  assert.equal(native._studio_init(), -1);
+  advance();
+  assert.equal(state(1), 64);
+  assert.equal(pixels().length, 1280 * 860 * 4);
+  assert.equal(pixels()[3], 255);
+  assert.ok(new Set(pixels()).size > 100, "real pixels, not an empty framebuffer");
+  passed("initialize and render real pixels");
+  const hashes = [];
+  for (let index = 0; index < 9; index++) {
+    page(index);
+    const rgba = pixels();
+    hashes.push(sha256(rgba));
+    if (pass === 1) await fs.writeFile(path.join(directory, `page-${index}.png`), encodePng(1280, 860, rgba));
+  }
+  assert.equal(new Set(hashes).size, 9);
+  passed("all nine shared Rust categories render distinct screens");
+  page(0);
+  press(1121, 352, true);
+  press(1180, 352, true);
+  press(1180, 352, false);
+  assert.ok(state(1) >= 78 && state(1) <= 86, `native drag value: ${state(1)}`);
+  click(1200, 303);
+  assert.equal(state(3), 0);
+  passed("pointer drag and switch update Rust state");
+  click(110, 196);
+  assert.equal(state(0), 1);
+  passed("native sidebar navigation");
+  page(2);
+  click(400, 300);
+  const textLength = state(6);
+  assert.equal(native._studio_key(97, 1), 0); advance(3);
+  assert.equal(native._studio_key(97, 0), 0); advance(3);
+  assert.equal(state(6), textLength + 1);
+  passed("physical keypad input updates text");
+  for (const index of [5, 6]) {
+    page(index);
+    const first = sha256(pixels());
+    advance(23);
+    assert.notEqual(sha256(pixels()), first, `animation on category ${index}`);
+  }
+  passed("media and custom motion advance with native time");
+  page(0);
+  click(1060, 694);
+  assert.equal(state(5), 1);
+  passed("native modal opens");
+  page(0);
+  const light = sha256(pixels());
+  assert.equal(native._studio_command(1, 0), 0); advance();
+  assert.equal(state(4), 1);
+  assert.notEqual(sha256(pixels()), light);
+  passed("theme updates native rendering");
+  assert.equal(native._studio_pointer(-1, 0, 1), -1);
+  assert.equal(native._studio_pointer(1280, 0, 1), -1);
+  assert.equal(native._studio_command(0, 9), -1);
+  assert.equal(native._studio_key(0xd800, 1), -1);
+  assert.equal(native._studio_frame(1001), -1);
+  advance();
+  passed("invalid boundary inputs are rejected and runtime recovers");
+  // A separate module must not inherit LVGL globals or state from this module.
+  const other = await createStudio({ wasmBinary });
+  assert.equal(other._studio_init(), 0);
+  assert.equal(other._studio_state(4), 0);
+  assert.equal(state(4), 1);
+  other._studio_destroy();
+  advance();
+  passed("independent WebAssembly instances isolate native state");
+  native._studio_destroy();
+  native._studio_destroy();
+  assert.equal(native._studio_pixels(), 0);
+  assert.equal(native._studio_frame(16), -1);
+  assert.equal(native._studio_init(), 0); advance();
+  assert.equal(state(1), 64);
+  assert.equal(state(4), 0);
+  click(110, 817);
+  assert.equal(state(8), 1);
+  native._studio_destroy();
+  passed("idempotent teardown, same-instance reinitialization and exit");
+  results.push({ pass, cases, hashes });
+}
+await fs.writeFile(path.join(directory, "results.json"), JSON.stringify({ time: new Date().toISOString(), sourceDigest: manifest.sourceDigest, wasm: manifest.outputs["studio.wasm"], results }, null, 2) + "\n");
+console.log(`Accepted ${passes} × ${results[0].cases.length} real WebAssembly checks.`);

@@ -1,0 +1,93 @@
+---
+title: Getting started
+description: Add rs_lvgl and rs_lvgl_ui from crates.io, check your build environment, and connect LVGL to your embedded Rust project.
+---
+
+import { Steps } from '@rspress/core/theme';
+import { PlatformTabs, PlatformTab } from '../../../components/PlatformTabs';
+import { GuideLinks } from '../../../components/GuideLinks';
+
+# Getting started
+
+`rs_lvgl` provides LVGL widgets, display and input APIs for embedded Rust applications. This page adds the crates.io dependencies and checks your development machine's build environment before you connect your device's drivers and clock.
+
+To try the widgets first, open the [component preview](../studio.mdx) and interact with switches, sliders and other controls.
+
+## Install in your project
+
+<Steps>
+
+### Install the toolchain
+
+Install stable Rust through [rustup](https://rustup.rs/). Building LVGL also requires a C compiler and libclang:
+
+<PlatformTabs>
+<PlatformTab label="macOS">
+
+```sh
+xcode-select --install
+```
+
+Xcode Command Line Tools provide clang, libclang and the C/C++ compilers.
+
+</PlatformTab>
+<PlatformTab label="Debian / Ubuntu">
+
+```sh
+sudo apt-get update
+sudo apt-get install build-essential clang libclang-dev
+```
+
+`build-essential` provides the build tools; `libclang-dev` is used to generate Rust bindings.
+
+</PlatformTab>
+</PlatformTabs>
+
+SDL2 is only needed for desktop windows; its setup is covered in [Run examples](./examples.mdx). Enabling Lottie also requires a C++14 compiler.
+
+### Create a project and add dependencies
+
+```sh
+cargo new my-display
+cd my-display
+cargo add rs_lvgl --no-default-features --features alloc
+cargo add rs_lvgl_ui
+```
+
+For an existing project, run the two `cargo add` commands from its directory. Cargo resolves the versions from crates.io and writes them to `Cargo.toml`.
+
+### Check the build environment
+
+```sh
+cargo check
+```
+
+The first build compiles the LVGL 9.6 C source bundled with the crate and generates Rust bindings and widget wrappers. Cargo downloads and builds these dependencies, so no separate LVGL installation is needed. Later builds reuse the cache when inputs have not changed.
+
+A successful check confirms that the dependencies and host build tools are ready. Displaying an interface on a device also requires its target toolchain, allocator, display driver, input and clock. Continue with [Connect a device](./native-integration.mdx) for those steps.
+
+</Steps>
+
+## Choose the APIs you need
+
+- [`rs_lvgl`](https://crates.io/crates/rs_lvgl) provides widget, display, input and timer APIs. Applications that manage LVGL widgets directly only need this dependency.
+- [`rs_lvgl_ui`](https://crates.io/crates/rs_lvgl_ui) adds a state-driven interface: describe the current state as a view and let the runtime update the widgets. The installation commands above include this layer.
+
+`rs_lvgl_ui` includes composite components, common widgets and bundled fonts by default. You can select a smaller [feature set](./features.mdx) for your device. Targets without automatic initialization need `no-autoinit` and a call to `rs_lvgl::init()` before other LVGL calls. See [Mount and update](./ui-runtime.mdx) for the UI lifecycle.
+
+<details>
+<summary>When do I need rs_lvgl_sys or rs_lvgl_codegen?</summary>
+
+`rs_lvgl_sys` builds the native library and exposes raw C bindings. Add it directly when your application needs custom C symbols. See [native build configuration](./native-integration.mdx) for headers and fonts. `rs_lvgl_codegen` generates widget wrappers during the build; applications do not normally depend on it directly.
+
+</details>
+
+## Edit the Rust examples in the guides
+
+The guide examples are editable and interactive. Change text or layout and select **Run**. See [Try code in the browser](./browser-playground.mdx) for supported syntax and a complete example.
+
+To run a complete application in a desktop window, continue with [Run examples](./examples.mdx).
+
+## Continue with the interface
+
+<GuideLinks items={["views", "events", "components"]} />

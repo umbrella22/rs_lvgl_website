@@ -1,0 +1,18 @@
+[package]
+name = "rs-lvgl-browser-engine"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+syn = { version = "=2.0.119", features = ["full", "visit"] }
+proc-macro2 = { version = "=1.0.107", features = ["span-locations"] }
+rs_lvgl = { path = "../source/rs_lvgl", default-features = false, features = ["alloc", "unsafe_no_autoinit"] }
+rs_lvgl_sys = { path = "../source/rs_lvgl_sys" }
+rs_lvgl_ui = { path = "../source/rs_lvgl_ui", features = ["input-keypad", "no-autoinit"] }
+
+[profile.release]
+opt-level = "s"
+panic = "abort"

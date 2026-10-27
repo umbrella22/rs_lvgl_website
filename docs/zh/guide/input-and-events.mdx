@@ -1,0 +1,156 @@
+---
+title: 响应输入
+description: 让开关和按钮发送消息，在 App::update 中保存状态，再通过 view 更新界面；继续接入键盘、焦点与编码器。
+---
+
+import { AppExample } from '../../../components/AppExample';
+import { ArchifyDiagram } from '../../../components/ArchifyDiagram';
+import { NativeExample } from '../../../components/NativeExample';
+import { GuideLinks } from '../../../components/GuideLinks';
+
+# 响应输入
+
+开关改变时，旁边的状态文字也应该改变。把控件输入转换成消息，在 `App::update` 中保存新值，再让 `view` 读取它，就能完成这样的交互。
+
+## 试着切换通知开关
+
+点击开关：`Disabled` 会变为 `Enabled`，下方计数增加。点击 `Reset`，状态和计数一起恢复。完整的应用代码就在左侧。
+
+<AppExample id="switch" />
+
+这个例子可以直接交互。将 `Notifications` 改为自己的标题并点击**运行**，就会看到修改后的页面。每次成功运行都会从 `app()` 返回的初始状态开始。
+
+## 把输入保存到状态
+
+开关的交互分为三步：
+
+1. `switch(self.enabled)` 用当前状态描述开关；`on_value_changed` 把原生的 `1` 或 `0` 转为 `Message::Enabled(value != 0)`。
+2. `update` 收到消息，保存 `enabled` 并累加 `changes`。
+3. `view` 再次读取两个字段，更新开关、文字和计数。
+
+按钮不需要读取数值，`button("Reset").on_click(Message::Reset)` 直接发送重置消息即可。消息类型实现 `Clone + 'static`，因为点击处理器会保存消息，并在每次点击时克隆它。
+
+<ArchifyDiagram id="message-flow" />
+
+原生回调先复制输入数据、调用处理器并将消息放入队列。平台循环中的 `Ui::drain` 再调用 `update` 和 `view`。浏览器预览已经提供这段循环；设备端的设置见[挂载与更新](./ui-runtime.mdx)。`app`、`view` 和 `update` 都必须及时返回，不能在其中另写运行循环。
+
+<details>
+<summary>只给控件设置初始值，会发生什么？</summary>
+
+<NativeExample id="controls" />
+
+这个例子可以点击、拖动，但 `update` 没有保存状态。控件的原生外观变化后，旁边的文字不会自动改变。需要联动时，像上面的开关一样保存消息中的值，再把它传回 `slider(...)`、`switch(...)` 或标签。
+
+</details>
+
+## 在循环中处理消息
+
+`Ui` 持有唯一一条有界队列，供视图、覆盖层和所有处理器槽位共享。`Ui::new` 使用 `DEFAULT_QUEUE_CAPACITY`（64），`Ui::with_capacity` 可指定其他容量。队列已满时，`post` 移除最旧的消息并增加丢弃计数。
+
+`Ui::post(message)` 供平台代码投递消息；原生回调内部也使用同一条队列。两条路径都不会调用 `App::update`，只有应用主动排空时才会更新：
+
+```rust
+ui.timer_handler(); // 派发原生计时器与输入回调
+let stats = ui.drain(&mut app, 32)?;
+```
+
+该片段只包含帧循环中的两条调用；[input 示例](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/input.rs) 提供显示、键盘与循环。
+
+`drain(&mut app, max_messages)` 最多处理指定数量的消息，逐条调用 `App::update`，然后为整个批次调用一次 `App::view` 并协调一次。它返回 `DrainStats`：
+
+- `processed`：本次应用的消息数。
+- `dropped`：本次因队列已满而丢弃的消息数。
+- `reconciled`：本次是否执行了渲染。
+
+没有处理任何消息时，`drain` 会跳过视图与协调，除非 `mark_dirty` 或 `set_theme` 请求了渲染，或者尚未挂载任何树。消息路径之外变化的状态（例如在 `view` 中读取的时钟或传感器）必须调用 `Ui::update(&app)` 或 `Ui::mark_dirty()`。`Ui::stats` 报告累计的 `messages_processed`、`messages_dropped`、`reconciled_updates` 以及节点计数。
+
+对受控控件的程序化写入会抑制下一次原生 `VALUE_CHANGED` 事件，因此渲染 slider 的值不会把应用自己的写入再送回应用。用户操作仍会入队消息。替换处理器会保留节点的原生回调槽位，并释放旧闭包持有的捕获。
+
+## 选择事件处理器
+
+直接处理器只响应所在节点；观察后代事件需要冒泡处理器和原生冒泡标志。每个构建器安装一个独立处理器。再次调用同一构建器只替换该处理器；同一节点上的不同处理器可以并存。
+
+| 构建器 | 消息负载 | 投递条件 |
+| --- | --- | --- |
+| `on_click(msg)` | 每次事件克隆的 `M` | 节点上的 `LV_EVENT_CLICKED` |
+| `on_value_changed(f)` | 变化后从原生控件读取的 `i32` | `VALUE_CHANGED`；具体取值见下 |
+| `on_text_changed(f)` | 仅在调用期间借用的 `&str` | 文本框上的 `VALUE_CHANGED`；需要保留时复制 |
+| `on_key(f)` | 完整的 `u32` LVGL 键码 | `LV_EVENT_KEY`；`NEXT`/`PREV` 会被焦点导航消费 |
+| `on_rotary(f)` | 带符号的 `i32` 增量 | `LV_EVENT_ROTARY` |
+| `on_gesture(f)` | `GestureDirection` | 单个方向手势事件；通用 `Gesture` 事件单独投递 |
+| `on_scroll(f)` | 以像素计的 `ScrollOffset { x, y }` | 连续 `SCROLL`，包括程序化滚动 |
+| `on_pointer(f)` | 以显示像素计的 `PointerEvent { event, x, y }` | 原生指针按下、持续按下、点击、长按与释放事件 |
+| `on_long_press(msg)` | 克隆的 `M` | `LONG_PRESSED`，不含 `LONG_PRESSED_REPEAT` |
+| `on_event(f)` | `&Event -> Option<M>` | 目标是本节点的事件 |
+| `on_bubbled_event(f)` | `&InputEvent -> Option<M>` | 从后代冒泡上来的事件 |
+
+`on_value_changed` 读取变化后原生控件持有的值：slider、bar 或 arc 的数值；switch 或 checkbox 的 `1`/`0`；dropdown、roller 或 button matrix 的选中索引；spinbox 的数值；tab 或 tile 的活动索引；由 `CalendarDate::to_value` 打包的日历日期；由 `(row << 16) | column` 打包的表格单元格；或消息框底部按钮索引。tileview 在尚无活动 tile 时报告 `-1`，日历对星期名称和相邻月份的日期报告 `-1`。
+
+`on_text_changed` 只对文本框有效。字符串在回调期间从 LVGL 借用；消息需要保留文本时构造拥有所有权的 `String`。不是合法 UTF-8 的原生文本会被跳过。
+
+`on_event` 接收不带负载的 `Event` 枚举，覆盖按下、点击、焦点、悬停、按键、旋转、就绪、取消、滚动和手势等事件码。`on_event` 忽略从后代冒泡上来的事件。`on_bubbled_event` 接收复制后的 `InputEvent`（`Key`、`Rotary`、`Gesture`、`Scroll`、`Pointer` 或 `Other(Event)`），是在祖先节点观察子节点输入的入口。所有中间子节点都必须启用 `.event_bubble(true)`；手势传播遵循 LVGL 独立的目标规则，使用 `.gesture_bubble(bool)`。
+
+这些负载处理器在所有控件选择下都可用，没有可选特性会门控 `on_key`、`on_pointer` 或队列。缺少原生按键/旋转参数，或没有指针设备时，不会伪造类型化负载。
+
+## 焦点、键盘与编码器
+
+`input-keypad` 特性默认关闭。它转发 `rs_lvgl/input-keypad`，并为 `Ui` 增加焦点 API；`rs_lvgl` 的键盘驱动与 `input_device::key` 常量也由同一特性提供。启用它本身不会激活焦点，纯指针界面保持原有行为。
+
+每个 UI 都需要显式的焦点组：
+
+- `Ui::bind_keypad(&Keypad)` 绑定同一显示上的存活类型化键盘，并激活焦点组。
+- `unsafe Ui::bind_input(NonNull<lv_indev_t>)` 绑定平台键盘或编码器。设备必须在 UI 线程上存活，属于同一显示，且类型只能是键盘或编码器。
+- `Ui::enable_focus()` 在没有绑定设备时激活焦点组。
+- `Ui::focus(Key)` 在视图与覆盖层中聚焦唯一的非 `Auto` 键。节点缺失或不可聚焦时返回 `false`；键有歧义或为 `Key::Auto` 时返回 `UiError::InvalidProperty`。
+- `Ui::set_editing(bool)` 选择原生编码器的编辑或导航模式。
+
+```rust
+ui.bind_keypad(&keypad)?;
+ui.focus(Key::Named("save"))?;
+```
+
+该片段假定 `keypad` 是同一显示上已存活的 `Keypad`；完整设备设置见本页末尾的 input.rs 示例。
+
+`NEXT` 与 `PREV` 移动焦点组。`ENTER` 通过与指针相同的原生点击路径激活焦点控件，因此 `on_click` 收到同样的消息。方向键操作当前焦点控件。标签等默认不可聚焦的控件需要 `.focusable(true)` 才能加入焦点组；`.focusable(false)` 可移除控件类默认包含的节点。隐藏和禁用的节点，包括隐藏或禁用父节点下的后代，都会被排除。
+
+`State::FOCUSED` 与 `State::FOCUS_KEY` 控制焦点环样式，由 LVGL 切换，不需要渲染。焦点组改变焦点时，`on_event` 报告 `Event::Focused` 与 `Event::Defocused`。
+
+`View::modal(true)` 在子树可见且启用时把焦点限制在其中；视图/覆盖层前序遍历中的最后一个模态节点生效。关闭后，如果此前的已挂载节点仍可聚焦，焦点会恢复，包括 `Auto` 键节点。启用 `input-keypad` 时，`Dialog` 组件会在其遮罩上设置该标志。模态范围只约束键盘焦点；拦截指针输入需要对话框的全屏遮罩。
+
+`input-gridnav` 包含 `input-keypad`，并为 object、row、column 或 grid 的直接子节点增加方向键导航。`GridNavigation` 包含 `rollover`、`scroll_first` 和 `axis`（`NavigationAxis::Both`、`Horizontal` 或 `Vertical`）；`View::grid_navigation` 启用它。容器占用一个 Tab 位置，方向键选择可点击且可聚焦的子节点。该特性同样不会自动激活焦点。
+
+## 回调执行与借用
+
+处理器在 UI 线程的原生事件回调中同步运行。它们不能调用 `Ui` 方法、运行 `App::update`、执行协调、删除原生对象、阻塞或 panic。`extern "C"` 回调中的 panic 无法展开到 C，会直接中止进程。库侧回调只复制输入数据并投递消息，应用逻辑应放在 `update` 中。
+
+同步调用决定了借用规则：
+
+- `on_text_changed` 收到的 `&str` 只在本次调用期间绑定 LVGL 缓冲区。保存前必须复制。
+- `PointerEvent`、`ScrollOffset`、`GestureDirection` 以及按键/旋转数值都是复制值。`InputEvent` 只包含复制数据，原生指针或借来的事件不会离开 C。
+- `on_click` 与 `on_long_press` 保存消息并在每次事件时克隆，因此消息类型必须实现 `Clone`。
+- 处理器闭包为 `FnMut + 'static`，由已挂载节点持有。处理器被替换或节点删除时，旧闭包被释放。
+
+忙碌保护会以 `UiError::Reentrant` 拒绝嵌套的 UI 修改，嵌套的 `timer_handler` 返回 `0`。这些检查只防止重入调用破坏树，并不使回调成为执行应用逻辑的安全位置。
+
+`Ui` 既不是 `Send` 也不是 `Sync`，队列也不是跨线程通道。所有 LVGL 访问、消息投递与排空都留在同一 UI 线程。该 crate 不对处理器或原生回调作展开安全、线程安全或并发访问承诺。
+
+## 生命周期与清理
+
+输入绑定属于 `Ui`，而不是描述树。原生焦点组属于单个 `Ui`，与 LVGL 的全局默认组相互独立。`Ui::unmount` 在原生显示仍然存活时删除树、丢弃焦点组并解绑其设备。再次 `mount` 会创建新树，需要重新调用 `bind_keypad`/`bind_input`。丢弃 `Ui` 也会删除根节点和焦点组；原生显示必须比 `Ui` 存活更久，清理顺序见[挂载与更新](./ui-runtime.mdx)。
+
+`Keypad` 拥有其原生输入设备：丢弃它时会删除设备，除非原生删除已经释放设备，此后 `Keypad::raw()` 返回 `None`。不要在设备自身的回调中删除设备，也不要在原生删除后继续保留裸设备指针。
+
+队列和装箱处理器都会分配内存。`rs_lvgl_ui` 在测试之外按 `no_std` 编译并需要 `alloc`，目标平台必须提供分配器；`input-keypad` 不会取消这一要求。原生分配失败会在创建或更新期间以 `UiError::Allocation` 报告，而不是静默丢弃输入事件。
+
+## 可运行示例
+
+[input.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/input.rs) 创建 SDL 窗口、鼠标与键盘，挂载两个按钮和一个可滚动列，把键盘绑定到 UI，聚焦 `Key::Named("add")`，并在帧循环中排空指针点击、键码与滚动偏移。
+
+```sh
+cargo run -p rs_lvgl_ui --example input --features simulator,input-keypad
+```
+
+该示例目标要求 `simulator` 与 `input-keypad`。它需要 SDL2 和可交互的可见窗口；`INPUT_FRAMES=<n>` 可限制运行帧数，但不能替代操作系统输入。编译检查或无头命令不会实际覆盖键盘路径。
+
+
+<GuideLinks items={["components", "runtime"]} />

@@ -1,0 +1,273 @@
+---
+title: 接入设备
+description: 为 Rust 设备应用注册显示、输入与时钟，配置 lv_conf.h、自定义 C 源码和字体，并管理原生显示的生命周期。
+---
+
+import { ArchifyDiagram } from '../../../components/ArchifyDiagram';
+import { GuideLinks } from '../../../components/GuideLinks';
+
+# 接入设备
+
+设备接入需要两部分：构建时选好 LVGL 配置，运行时提供显示、输入和时钟。`rs_lvgl` 提供 Rust 接口；屏幕传输、触摸采样和任务调度由平台代码完成。可以先用默认配置接通显示，再加入设备自己的字体和 C 源码。
+
+`rs_lvgl_sys` 编译仓库内的 LVGL 9.6，需要 C 编译器和 libclang。它不会链接平台 SDK 附带的 LVGL 库。SDL2 只用于桌面后端；Lottie 另外需要 C++14 编译器和运行时。
+
+## 注册显示、输入与时钟
+
+运行时循环由应用负责。`rs_lvgl_ui` 从不注册显示、输入设备、定时器或 RTOS
+任务。默认通过 `ctor` 钩子自动初始化 LVGL；使用 `no-autoinit` 的构建必须
+在任何其他 LVGL 调用之前执行 `rs_lvgl::init()`。
+
+### 注册显示
+
+安全显示构造器按 RGB888 渲染，并分配刷新缓冲区。下面的片段展示刷新入口，回调中的屏幕传输由应用实现：
+
+```rust
+let display = rs_lvgl::Display::register::<_, { 320 * 240 }>(320, 240, |refresh| {
+    // Send refresh.area and the active colors to the panel.
+})?;
+```
+
+`N` 是缓冲区中的 RGB888 颜色数。它至少覆盖显示的一行对齐宽度；整帧缓冲区
+同样有效。回调在 UI 线程运行，只接收有效的
+`(x2 - x1 + 1) * (y2 - y1 + 1)` 个条目，返回后由 trampoline 调用
+`lv_display_flush_ready`。
+
+`Display::register_raw` 改为遵循配置的颜色格式。它的 `N` 个条目是
+`lv_color_t` 值，不一定是 RGB888 像素；flush 回调必须按真实区域、stride 和
+格式处理，并在传输完成后调用 `lv_display_flush_ready`。
+
+### 提供时间并驱动循环
+
+时钟和定时器派发是两件事：
+
+- 用单调时钟读取自上次调用以来经过的 `Duration`，传给
+  `rs_lvgl::tick_inc`。周期源可以直接传已知间隔；循环频率变化时传每次
+  实测的时长，帧时长短不一也不会丢失时间。该函数把整毫秒转发给
+  `lv_tick_inc`，舍弃不足 1 毫秒的部分。
+- 也可以启用 `rust_timer`，用实现了 `LvClock` 的单调时钟调用
+  `rs_lvgl::timer::update_clock`；`since_init()` 返回自初始化以来的时间。
+  它每次更新都会注册 `lv_tick_set_cb`，因此能跨 deinit 和新的初始化周期。
+  回调安装后，`lv_tick_get` 读取回调值，不再使用 `tick_inc` 累加的值；
+  只选一种来源。
+- 调用 `rs_lvgl::task_handler()` 或 `Ui::timer_handler()` 运行 LVGL
+  定时器，随后调用 `Ui::drain` 应用队列中的消息。把同一个实测毫秒数传给
+  `Ui::tick`，让有生命周期的自定义控件推进；`lv_timer_handler` 不会调用
+  它们的 `update` 钩子。
+
+### 接入触摸、按键或编码器
+
+输入设备通过 `rs_lvgl::input_device` 接入。将 `InputDriver` trait 引入作用域
+后，`Pointer::register`、`Encoder::register` 和 `Keypad::register` 把设备绑定
+到显示；`rs_lvgl_ui` 再显式绑定 keypad 或激活焦点。原生回调只入队消息，
+应用状态在 `Ui::drain` 中改变。
+
+同一时刻只有一个线程可以访问 LVGL。不要从 C 回调或另一个线程调用 `Ui`
+方法。重入的 `timer_handler` 返回 `0`，其他重入的 `Ui` 调用返回
+`UiError::Reentrant`。
+
+使用声明式层时，继续按[挂载与更新](./ui-runtime.mdx)创建 `Ui` 并接入 `App`。
+
+## 显示生命周期与销毁
+
+丢弃 `Display` 句柄不会删除原生显示，也不是销毁步骤。`Display` 没有实现
+`Drop`，丢弃句柄只放弃 Rust 侧的这个引用。已注册的缓冲区、flush 回调和
+原生显示继续存活，别名和在该屏幕上创建的控件仍然有效；回调和捕获的数据在
+原生显示被删除时释放，包括由 `rs_lvgl::deinit` 删除显示的情况。
+
+原生删除和反初始化是两个独立的 unsafe 操作。`Display::delete(self)` 即使
+还存在其他别名也会删除显示；`rs_lvgl::deinit` 会拆除整个 LVGL。是否安全由
+它们各自的 `# Safety` 条件决定，而不是由调用顺序决定：先停止渲染、异步绘制
+任务、GPU/DMA 工作以及待处理的 flush；确保没有渲染、flush、事件或输入回调
+正在执行；并确保之后没有任何屏幕、控件、动画、输入设备或其他显示别名会访问
+这些对象。对于已挂载的类型化 UI，先调用 `Ui::unmount()` 删除其树并解绑输入，
+再销毁输入设备句柄，最后才删除原生显示或调用 `deinit`。如果应用不需要在退出
+前移除原生显示，丢弃 Rust 句柄就足以结束 Rust 侧的使用；不要为了“清理”而在
+别名仍存在时调用删除。
+
+## 选择 LVGL 配置
+
+没有应用输入时，构建读取
+[`vendor/include-9.6/lv_conf.h`](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_sys/vendor/include-9.6/lv_conf.h)，
+并在 Cargo feature 改变选择时把补丁副本写入 `OUT_DIR/conf`。仓库中的头文件
+不会被改写。默认头文件使用 CLIB 分配器，关闭 SDL 和日志，启用核心控件集以及
+Montserrat 12、14、16、28、48。可选媒体和输入扩展（QR、条码、GIF、Lottie、
+拼音、网格导航）默认关闭。
+
+Cargo feature 选择会改变默认头文件启用的能力，具体集合见[选择控件与字体](./features.mdx)。
+构建失败的诊断见[故障排查](./troubleshooting.mdx)。
+
+设置 `LVGL_CONFIG_PATH` 会转移配置归属：应用头文件被原样 include，成为唯一
+依据。Cargo 的控件和字体 feature 不再修改它。每个显式请求的能力必须已经在
+生效宏中启用，否则构建会以配置冲突停止。`minimal-config` 对应用头文件没有
+作用。
+
+应用头文件及其引号 include 会被跟踪。修改数值表达式、被包含的设置文件，或
+`#undef`/`#define` 组合都会触发重新构建；bindgen 读取最终整数值，而不是
+对文本做近似解析。
+
+## 添加应用配置与源码
+
+| 输入 | 约定 |
+| --- | --- |
+| `LVGL_CONFIG_PATH` | 绝对路径、已存在的 UTF-8 文件，文件名不限。它作为 LVGL 配置被 include 并编译；引号 include 相对原头文件解析。 |
+| `LVGL_EXTRA_C_DIR` | 绝对路径、已存在的目录。递归编译其中所有 `.c` 文件，目录及其私有头文件都参与重建跟踪；C++ 文件不会被编译。 |
+| `LVGL_EXTRA_HEADERS` | 绝对路径、已存在的头文件，以平台路径分隔符连接。其声明会加入 bindgen，包括 `lv_*` 前缀之外的名称。 |
+| `LVGL_CFLAGS` | 逗号分隔的 `NAME=VALUE` 预处理定义，同时应用于 C/C++ 编译和 bindgen。空条目会被忽略。它是宏定义列表，不是路径，也不是通用编译器选项字符串。 |
+| `LVGL_SYSROOT` | bindgen 使用的目标 sysroot。构建只把 `<值>/include` 追加到 bindgen 的 clang 参数；空值会被忽略。该值不做校验，也不传给 C/C++ 编译器，编译器仍需单独配置自己的 sysroot。 |
+
+绝对路径和存在性校验只适用于 `LVGL_CONFIG_PATH`、`LVGL_EXTRA_C_DIR` 和
+`LVGL_EXTRA_HEADERS`；构建会规范化每个值，并检查该路径能否写入 C include
+指令。相对值会被拒绝，并提示使用 Cargo 的 `relative` 设置。
+`LVGL_CFLAGS` 和 `LVGL_SYSROOT` 不参与这项路径校验。可移植的相对路径放在
+工作区的 `.cargo/config.toml`；Cargo 从包含 `.cargo` 的目录解析这些值。
+
+```text
+application/
+  .cargo/config.toml
+  Cargo.toml
+  native/
+    lv_conf.h
+    board.h
+    application.h
+    application.c
+    fonts/application_font.c
+```
+
+```toml
+# .cargo/config.toml
+[env]
+LVGL_CONFIG_PATH = { value = "native/lv_conf.h", relative = true }
+LVGL_EXTRA_C_DIR = { value = "native", relative = true }
+LVGL_EXTRA_HEADERS = { value = "native/application.h", relative = true }
+```
+
+进程中已存在的环境变量优先于 `[env]` 条目，除非 Cargo 配置了
+`force = true`。因此一个残留的 shell 变量可能选中与仓库文件不同的头文件。
+
+## 可移植的配置
+
+从仓库固定的 LVGL 9.6 配置复制出应用头文件，再修改板级需要的设置。把机器相关
+的值放进被包含的文件，使同一份头文件可以用于不同构建机。
+
+```c
+/* native/board.h */
+#define BOARD_DPI 173
+#define BOARD_USE_SLIDER 1
+```
+
+```c
+/* native/lv_conf.h */
+#include "board.h"
+
+#undef LV_DPI_DEF
+#define LV_DPI_DEF (BOARD_DPI + 0)
+
+#undef LV_USE_SLIDER
+#define LV_USE_SLIDER (BOARD_USE_SLIDER && 1)
+```
+
+表达式由目标预处理器求值。C 编译和生成的 Rust 常量都会看到最终值，因此条件
+定义有效，前提是结果能作为整数常量。
+
+显式启用的控件必须在同一份头文件里满足其原生依赖。默认 feature 路径会自动
+补齐这些依赖，应用头文件不会。例如 `widget-slider` 需要 `LV_USE_SLIDER`
+和 `LV_USE_BAR`；`widget-keyboard` 需要 `LV_USE_KEYBOARD`、
+`LV_USE_BUTTONMATRIX` 和 `LV_USE_TEXTAREA`；Lottie 需要
+`LV_USE_THORVG_INTERNAL` 以及矢量、矩阵和浮点支持。SDL 必须双向一致：
+头文件启用 `LV_USE_SDL`，同时 Cargo 启用 `sdl`。
+
+使用 `rs_lvgl_ui` 的类型化应用必须在头文件中保留核心 object、label 和
+button 类、Montserrat 14，以及所有选中的 UI 能力。删除这些内容的原始头文件
+不是受支持的 UI 配置。
+
+## 自定义 C 源码与字体
+
+声明通过 `LVGL_EXTRA_HEADERS` 进入 Rust；实现和生成的字体源码由
+`LVGL_EXTRA_C_DIR` 编译。
+
+```c
+/* native/application.h */
+#include "lvgl.h"
+
+int application_value(void);
+extern const lv_font_t application_font;
+```
+
+```c
+/* native/application.c */
+#include "application.h"
+
+int application_value(void) { return 7; }
+```
+
+```rust
+// SAFETY: the C function has no pointer arguments and is called on the UI thread.
+let value = unsafe { rs_lvgl_sys::application_value() };
+
+// SAFETY: the descriptor is fully initialized, immutable, and lives for the program.
+let font = unsafe {
+    rs_lvgl_ui::Font::from_raw(core::ptr::addr_of!(rs_lvgl_sys::application_font))
+};
+```
+
+`Font::from_raw` 是不做校验的适配器。LVGL 会在样式中保留描述符指针，因此
+描述符、字形表及其回调必须在所有使用该字体的对象存活期间保持有效。LVGL 字体
+转换器生成的 `.c` 文件已经包含所需静态表；空的或只初始化一部分的
+`lv_font_t` 可以链接，但不会渲染文字。额外源码目录只编译 `.c`，应用提供的
+C++ 源码需要单独的构建集成。
+
+## C 与 Rust 如何一起构建
+
+生效配置同时用于 C 编译与绑定生成。生成的 Rust 封装必须对应应用实际链接的原生库。
+
+<ArchifyDiagram id="build-path" />
+
+具体文件与 Cargo 元数据沿以下路径传递：
+
+```text
+application lv_conf.h (optional) or vendored lv_conf.h
+  + vendored LVGL C and shims
+  + application C sources and fonts (optional)
+  -> rs_lvgl_sys build script -> native library + OUT_DIR/bindings.rs
+  -> DEP_LVGL_WIDGETS / FONTS / OPTIONAL_WIDGETS / BINDINGS
+  -> rs_lvgl build script -> generated widget wrappers
+  -> rs_lvgl handwritten API -> rs_lvgl_ui or the application
+```
+
+原生工具链需要 C 编译器和 libclang。SDL2 是额外依赖，只由 `sdl` feature
+使用；Lottie 扩展还需要 C++14 编译器和运行时。
+
+在依赖图里，`rs_lvgl_sys` 同时是 `rs_lvgl` 的普通依赖和构建依赖。包装器
+生成器从实际链接的普通依赖读取 `DEP_LVGL_BINDINGS`、`DEP_LVGL_WIDGETS`
+和 `DEP_LVGL_OPTIONAL_WIDGETS`；缺少 `DEP_LVGL_BINDINGS` 时，它回退到
+构建依赖副本提供的 `rs_lvgl_sys::_bindgen_raw_src()`。生成器不会去其他
+目标目录里寻找主机侧的构建产物。
+
+## 单一提供方
+
+构建始终编译内置提供方，不会发现、链接或回退到外部预编译 LVGL，包括 SDK
+附带的版本。版本字符串相同或头文件相同都不能证明二进制 ABI 兼容；feature
+图还会改变原生布局和类型，例如 Lottie 会在整个链接图中选择浮点坐标和矢量
+支持。外部提供方集成需要单独的设计，定义自己的 ABI 和配置，并在目标上验证。
+
+## 重建行为与验证
+
+构建脚本跟踪内置配置、内置源码和 shim、应用配置、额外 C 目录（包括新增和
+删除的文件）、额外头文件以及相关环境变量。它不会把在 `OUT_DIR` 生成的
+头文件当作新输入。配置切换和不同的 `CARGO_TARGET_DIR` 应各自独立重建。
+
+在仓库根目录执行：
+
+```sh
+cargo build
+cargo test -p rs_lvgl_sys --test build_script -- --test-threads=1
+python3 scripts/check-native-inputs.py --artifacts target/native-input-audit
+```
+
+构建脚本测试调用真实的补丁和校验辅助函数。原生输入 runner 会构建原始和
+类型化消费者，修改被包含的头文件和私有头文件，检查配置切换、中断编译后的
+恢复，以及解包后的 crate。这些只是主机检查，不能验证其他目标的 ABI、板载
+显示、硬件时钟源、DMA 销毁或外部提供方。
+
+<GuideLinks items={["features", "runtime"]} />

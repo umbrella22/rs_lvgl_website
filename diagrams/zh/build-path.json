@@ -1,0 +1,217 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "一份目标配置，连接 C 与 Rust",
+    "locale": "zh-CN",
+    "output": ".archify/dataflow-build-path-zh-20261026-175054/build-path.html",
+    "quality_profile": "showcase"
+  },
+  "stages": [
+    {
+      "label": "构建输入"
+    },
+    {
+      "label": "目标构建"
+    },
+    {
+      "label": "输出"
+    },
+    {
+      "label": "Rust 封装"
+    },
+    {
+      "label": "应用"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "config",
+      "label": "目标配置",
+      "sublabel": "lv_conf.h + defines",
+      "type": "backend",
+      "stage": 0,
+      "row": 0
+    },
+    {
+      "id": "sources",
+      "label": "LVGL + shims",
+      "sublabel": "可选应用 C / 字体",
+      "type": "database",
+      "stage": 0,
+      "row": 3
+    },
+    {
+      "id": "bindgen",
+      "label": "bindgen",
+      "sublabel": "目标头文件与宏",
+      "type": "backend",
+      "stage": 1,
+      "row": 0
+    },
+    {
+      "id": "compile",
+      "label": "cc / C++",
+      "sublabel": "编译所选原生能力",
+      "type": "backend",
+      "stage": 1,
+      "row": 3
+    },
+    {
+      "id": "bindings",
+      "label": "bindings.rs",
+      "sublabel": "OUT_DIR",
+      "type": "database",
+      "stage": 2,
+      "row": 0
+    },
+    {
+      "id": "metadata",
+      "label": "能力元数据",
+      "sublabel": "DEP_LVGL_*",
+      "type": "backend",
+      "stage": 2,
+      "row": 2
+    },
+    {
+      "id": "library",
+      "label": "原生库",
+      "sublabel": "LVGL objects",
+      "type": "database",
+      "stage": 2,
+      "row": 4
+    },
+    {
+      "id": "codegen",
+      "label": "rs_lvgl_codegen",
+      "sublabel": "rs_lvgl/build.rs",
+      "type": "backend",
+      "stage": 3,
+      "row": 0
+    },
+    {
+      "id": "api",
+      "label": "rs_lvgl",
+      "sublabel": "生成封装 + 手写 API",
+      "type": "backend",
+      "stage": 4,
+      "row": 0
+    },
+    {
+      "id": "app",
+      "label": "Rust App",
+      "sublabel": "直接调用或通过 UI 层",
+      "type": "frontend",
+      "stage": 4,
+      "row": 3
+    }
+  ],
+  "flows": [
+    {
+      "id": "config-bindgen",
+      "from": "config",
+      "to": "bindgen",
+      "label": "有效配置",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "config-compile",
+      "from": "config",
+      "to": "compile",
+      "label": "同一配置",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "source-compile",
+      "from": "sources",
+      "to": "compile",
+      "label": "源文件",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "emit-bindings",
+      "from": "bindgen",
+      "to": "bindings",
+      "label": "Rust FFI",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "emit-caps",
+      "from": "bindgen",
+      "to": "metadata",
+      "label": "生效宏",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "native-library",
+      "from": "compile",
+      "to": "library",
+      "label": "目标对象",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "read-bindings",
+      "from": "bindings",
+      "to": "codegen",
+      "label": "BINDINGS",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "read-caps",
+      "from": "metadata",
+      "to": "codegen",
+      "label": "WIDGETS / cfg",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "emit-wrappers",
+      "from": "codegen",
+      "to": "api",
+      "label": "generated.rs",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "use-api",
+      "from": "api",
+      "to": "app",
+      "label": "类型化 API",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "link-native",
+      "from": "library",
+      "to": "app",
+      "label": "链接",
+      "fromSide": "right",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "配置的归属",
+      "items": [
+        "默认构建按 Cargo feature 生成有效配置；应用的 LVGL_CONFIG_PATH 头文件原样包含并校验。",
+        "C 编译与 bindgen 必须使用同一目标配置，不能只改变 Rust 的可见接口。"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "读取实际链接的提供方",
+      "items": [
+        "rs_lvgl/build.rs 读取 DEP_LVGL_BINDINGS 与能力元数据，再生成 generated.rs。",
+        "缺少 BINDINGS 元数据时才使用构建依赖提供的原始绑定。显示、输入和计时仍由平台接入。"
+      ]
+    }
+  ]
+}

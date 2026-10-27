@@ -1,0 +1,126 @@
+---
+title: 排列控件
+description: 使用列、行和网格排列 LVGL 控件，设置尺寸与样式，并用稳定的键保留列表项身份。
+---
+
+import { ArchifyDiagram } from '../../../components/ArchifyDiagram';
+import { ConceptDiagram } from '../../../components/ConceptDiagram';
+import { NativeExample } from '../../../components/NativeExample';
+import { GuideLinks } from '../../../components/GuideLinks';
+
+# 排列控件
+
+一个设置页通常由标题、内容和操作按钮组成。`rs_lvgl_ui` 用普通 Rust 函数描述这些控件，再用 `column`、`row` 或 `grid` 把它们放在一起。LVGL 负责布局和绘制。
+
+## 从一列开始
+
+下面的 `view` 返回标题、说明和一个按钮。`column([...])` 按集合顺序从上到下排列它们，`.gap(16)` 在相邻控件间留出 16 像素。
+
+<NativeExample id="column" />
+
+把 `gap(16)` 改成 `gap(24)`，点击**运行**，观察控件之间的距离。也可以交换标题和说明在数组中的位置，再运行一次。
+
+构造函数返回 `View<M>` 描述，创建描述时还不会创建原生控件。`M` 是应用的消息类型；没有消息的页面可以使用 `View<()>`。通过 `use rs_lvgl_ui::prelude::*` 导入常用函数和类型。
+
+## 调整子节点的顺序
+
+<ConceptDiagram kind="tree" />
+
+`column([title, content, actions])` 中，标题在上，操作区在下。数组、向量和迭代器都保留传入顺序；`row` 按相同顺序水平排列。尺寸、间距和对齐方式再决定具体的像素位置。
+
+把标题提取成变量或函数，也不会改变这条规则：
+
+```rust
+use rs_lvgl_ui::prelude::*;
+
+fn page_title<M>(text: &str, theme: &Theme) -> View<M> {
+    label(text).style(Style::title(theme))
+}
+
+fn settings_view(theme: &Theme) -> View<()> {
+    let content = label("Notification preferences");
+    let title = page_title("Settings", theme);
+    column([title, content]).style(Style::default().gap(12))
+}
+```
+
+这里先创建 `content`，再创建 `title`，但标题仍显示在前面，因为它是 `column` 的第一项。辅助函数返回普通 `View<M>`，每次调用生成一个新的描述；它不会自动增加状态或缓存。需要复用标题样式时，这种提取就很有用，更多用法见[复用组件](./components.mdx)。
+
+`.child(node)` 可以追加一个子节点，`.children(items)` 可以追加多个。`obj`、`row`、`column`、`grid` 是容器；启用对应特性后，`tabview`、`tileview` 和 `msgbox` 也能接收子节点。给按钮或标签添加子节点会返回 `UiError::InvalidProperty`，校验失败时还没有改动原生树。
+
+## 设置尺寸、间距与对齐
+
+通过 `.style(...)` 设置布局。常用属性包括：
+
+| 属性 | 用途 |
+| --- | --- |
+| `.gap(12)` | 相邻子节点之间留出 12 像素 |
+| `.pad(16)` | 内容与容器边缘之间留出 16 像素 |
+| `.width(Size::Percent(100))` | 占满父节点可用宽度 |
+| `.height(Size::Px(48))` | 使用固定高度 |
+| `.flex_grow(1)` | 分配 flex 容器中的剩余空间 |
+| `.flex_align(main, cross)` | 设置子节点在主轴与交叉轴上的对齐方式 |
+
+`Size::Content` 随内容确定尺寸。`.align(...)` 设置节点在父节点中的位置，`.flex_align(...)` 设置容器里的子节点排布。
+
+## 用网格指定位置
+
+`grid(columns, rows, children)` 接受列轨道、行轨道和子节点。轨道使用 `GridTrack::Px`、`Fr` 或 `Content`；每个子节点用 `.grid_cell(column, row, column_span, row_span)` 指定位置和跨度。
+
+<NativeExample id="grid" />
+
+修改 `.grid_cell(...)` 会移动控件；修改轨道会改变可用空间。交换集合中的两个节点不会改变它们已指定的单元格。`.grid_align(column, row)` 可以继续设置单元格内的对齐方式；轨道或单元格描述变化时才会重新应用布局。
+
+## 调整控件外观
+
+样式叠加在控件的默认外观上。例如，`Style::screen(theme).pad(16)` 设置屏幕样式和内边距，其他未设置的属性继续使用 LVGL 默认值或从父节点继承。
+
+`Style::default()` 不设置任何字段，完全继承 LVGL 控件类的默认值。`Style::neutral()` 清除不可继承的布局与外观字段；普通容器和标签从透明、无边框开始，文字颜色、字体和文本对齐仍保持未设置，以便从父节点继承。主题预设包括 `Style::title`、`body`、`muted`、`surface`、`accent` 和 `screen`。`Style::accent` 同时清除原生阴影，使扁平操作按钮适配深色背景。普通按钮则保留原生主题的表面与阴影，除非视图显式覆盖。
+
+交互状态使用局部样式选择器：`.state_style(State::PRESSED, ...)` 与 `.state_style(State::FOCUSED, ...)` 在 LVGL 持有对应状态时切换。它们不会入队消息，也不会触发渲染。
+
+## 为列表项设置稳定的键
+
+列表会插入、删除或重排时，用 `Key::Id(item.id)` 标记同一条数据。键跟随条目，集合顺序决定位置。数组下标会随位置变化，不适合标识会重排的条目。
+
+<ConceptDiagram kind="keys" />
+
+`Key` 决定子节点在兄弟之间的身份：
+
+- `Key::Auto`（默认）在 `Auto` 兄弟中按位置匹配。
+- `Key::Named(&'static str)` 按静态名称匹配。
+- `Key::Id(u64)` 按应用标识匹配。
+
+`Named` 与 `Id` 在同一父节点下必须唯一，重复时校验失败并返回 `UiError::DuplicateKey`。`Named` 接受 `&'static str`，运行时生成的标识使用 `Key::Id`。键盘 ID 会在视图与覆盖层中一起解析，因此两者范围内应保持唯一。
+
+键把列表更新限制在局部：
+
+```rust
+// 片段中的 Msg::Remove(u64) 是应用消息。
+column(items.iter().map(|item| {
+    row([
+        label(item.name.clone()).style(Style::default().flex_grow(1)),
+        button("Remove").on_click(Msg::Remove(item.id)),
+    ])
+    .key(Key::Id(item.id))
+}))
+```
+
+<details>
+<summary>更新时，哪些原生控件会被复用？</summary>
+
+每次渲染时，协调器按键匹配带键子节点，按位置匹配 `Auto` 子节点。键与控件类型不变时复用原生对象，就地写入变化的属性和样式；新子节点创建，消失的子节点删除，存活的兄弟按需移动。重排保留当前位置的最长递增子序列，只移动不在该序列中的子节点。键变化、控件类型变化、自定义控件变体变化，或 LVGL 无法就地修补的结构性属性，都会替换对应的原生子树。根节点与 tab 页也遵循同一身份规则。
+
+对带键列表来说，修改一项文本只更新一个原生标签，追加一行只创建一个子树，移动一行不会重建相邻行。节点仍留在树中且仍可聚焦时，原生身份也会保留焦点和滚动位置。`Ui::stats` 报告 `created_nodes`、`deleted_nodes` 和 `moved_nodes` 计数。
+
+</details>
+
+## 让视图读取应用状态
+
+标题文字、开关值或列表数据变化时，应用通过 `App::view` 返回新的 `View<Msg>`。`View<M>` 是 `Node<M>` 的别名，辅助函数与内置构造函数返回同一种类型。
+
+<ArchifyDiagram id="data-model" />
+
+图中的 `Settings.enabled` 和 `Settings.changes` 来自[开关示例](./input-and-events.mdx)。`update` 修改这两个字段，`view` 根据字段生成控件。`Ui` 借用应用来完成更新，状态仍保存在应用结构体中。下一步为页面接上输入；平台循环和资源清理见[挂载与更新](./ui-runtime.mdx)。
+
+<GuideLinks items={["events", "components", "runtime"]} />

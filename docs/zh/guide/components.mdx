@@ -1,0 +1,237 @@
+---
+title: 复用组件
+description: 用普通 Rust 函数复用视图，再组合列表、面板、导航、对话框和提示条。
+---
+
+import { NativeExample } from '../../../components/NativeExample';
+import { GuideLinks } from '../../../components/GuideLinks';
+
+# 复用组件
+
+多个页面使用同样的标题、列表行或按钮组时，可以把它们提取成返回 `View<M>` 的函数。内置的 `components` 模块也用这种方式组合控件，提供列表、导航和覆盖层。
+
+## 从可复用的视图函数开始
+
+组件可以从一个返回 `View<M>` 的普通 Rust 函数开始。提取标题后，字体与间距便有了统一定义；返回的视图放在哪里，仍由父节点决定。
+
+<NativeExample id="title" />
+
+修改辅助函数会影响所有通过它构造的标题。每次调用生成一个新的描述，不会自动增加独立状态或渲染缓存。状态仍由应用保存，通过参数传入辅助函数。拥有独立消息类型的函数可以通过 `View::map` 适配整棵子树。
+
+## 传入数据，传出消息
+
+标题、列表或对话框需要的数据通过参数传入。组件返回 `View<M>`，把用户操作转换成消息交给应用处理。需要独立消息类型时，用 `View::map` 转换整棵子树。
+
+导航与提示条还提供 `NavState<P>`、`Toasts` 这样的普通状态结构体。把它们放进应用，在 `update` 中调用状态方法，在 `view` 中读取结果。组件沿用同一套键、样式和事件规则。
+
+## 列表与面板
+
+由数据驱动的列表同时需要顺序与稳定的条目身份。集合发生变化时，同一个标识必须继续跟随同一个条目。
+
+<NativeExample id="keyed-list" />
+
+`list::list(theme, items)` 是一个可滚动列，使用主题表面、4 px 内边距、2 px 间距并占满宽度。`list::section(theme, title)` 插入弱化的分组标题。`ListItem::new(text)` 创建一行，可选部分包括：
+
+- `.icon(symbol::WIFI)` 预留固定的 20 px 字形槽位。
+- `.detail("Home")` 追加弱化的尾部文本；`.trailing(switch(...))` 用任意节点替换它。可交互的尾部节点保留自己的处理器，点击它不会同时点击整行。
+- `.chevron(true)` 追加右箭头，常用于导航行。
+- `.selected(true)` 通过 `State::CHECKED` 使用主题强调色绘制选中行。选中状态属于应用状态，由下一次视图决定。
+- `.on_click(msg)` 让行可点击并增加按下高亮。没有点击处理器的行不可点击。
+
+`ListItem::view(theme)` 返回 `View<M>`。键由应用负责；由运行时数据生成的列表用 `Key::Id` 标记每一行。
+
+`Panel::new(title)` 是带头部行和内容列的卡片。`.action(node)` 追加头部操作，通常使用 `panel::icon_button(theme, symbol::SAVE, msg)`；`.child` 与 `.children` 填充内容区。面板占满父节点宽度；只有面板具有有界高度时，内容区才会滚动，例如 `.style(Style::default().flex_grow(1).height(Size::Percent(100)))`；没有高度时面板随内容增长。
+
+## 导航与文件条目
+
+`NavState::new(root)` 创建非空页面栈。`current()`、`pages()`、`depth()` 和 `can_go_back()` 读取栈；`push`、`back` 与 `update(NavMsg<P>)` 修改栈。`NavMsg::Push` 压入页面，`Back` 弹出当前页，`Root` 截断到根页面，`Replace` 替换当前页。根页面上的 `back()` 返回 `false`。
+
+`nav::view(&state, theme, title, page, back_msg)` 渲染头部、返回按钮（栈深度大于根时）和传入的页面。页面主体以栈深度为键，因此新页面会重新创建控件并从头开始滚动，而不是把上一页的控件变形。标题是渲染参数，不存入 `NavState`。`nav::link(theme, text, msg)` 是带箭头的列表行，点击时发送导航消息。
+
+`file_explorer::view(theme, location, parent, entries)` 用 `FileEntry::file` 与 `FileEntry::directory` 组合出位置头部和相同的列表行。每个条目携带稳定的 `id`、显示用 `name` 和激活消息；重复 ID 会产生通常的 `DuplicateKey` 错误。该组件不执行文件系统 I/O；应用在 `update` 或自己的任务中读取目录，再把结果条目传入。
+
+## 覆盖层
+
+`Dialog::new(title)` 返回全屏变暗遮罩上的居中卡片。`.text` 添加段落，`.child` 添加任意正文内容，`.button(text, msg)` 或 `.primary(text, msg)` 添加底部操作。`.on_dismiss(msg)` 让点击遮罩发送该消息。卡片宽度默认为显示区域的 80%，上限 360 px，可用 `.width(Size)` 覆盖。遮罩拦截指针输入，因此对话框显示期间下层视图不可操作。启用 `input-keypad` 时，对话框根节点同时是模态焦点范围；未启用该特性时它仍是指针覆盖层。
+
+`toast::view(&toasts, theme, dismiss)` 在显示区域底部堆叠带键的标签，最新的在最下面。每条提示以队列 ID 为键，因此一条过期不会重建其余标签。点击发送 `dismiss(id)`。`Toasts::push(text, duration_ms)` 与 `push_kind(kind, text, duration_ms)` 返回 ID；`dismiss(id)`、`clear()` 和 `with_max_visible(n)` 管理队列。`advance(elapsed_ms)` 倒计时并移除过期项，返回可见集合是否变化。
+
+提示条没有内部计时器。应用通过消息推进它们，例如平台在 `!toasts.is_empty()` 时投递 tick。组件只渲染队列当前内容。
+
+`layers(children)` 把多个覆盖层组合为一个全尺寸、透明、不可点击的容器。后加入的子节点绘制在更早的子节点之上。子节点通过 `Style::align` 与 `Style::offset` 定位；输入会穿透容器，除非命中某个子节点。对话框与提示条由 `App::overlay` 返回，视图不再返回时即被删除。
+
+## 设置界面
+
+下面是一个设置界面的 `App` 部分，使用导航、列表、面板、确认对话框和提示条。完整宿主程序见 [rs_lvgl_ui/examples/components.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/components.rs)。
+
+<details>
+<summary>查看完整的设置页 App</summary>
+
+```rust
+use rs_lvgl_ui::components::{
+    dialog::Dialog,
+    layers,
+    list::{self, ListItem},
+    nav::{self, NavMsg, NavState},
+    panel::{self, Panel},
+    toast::{self, ToastKind, Toasts},
+};
+use rs_lvgl_ui::prelude::*;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Page {
+    Root,
+    Display,
+}
+
+#[derive(Clone)]
+enum Msg {
+    Nav(NavMsg<Page>),
+    ToggleWifi,
+    AskReset,
+    CancelReset,
+    Reset,
+    Save,
+    DismissToast(u64),
+    Tick(u32),
+}
+
+struct Settings {
+    nav: NavState<Page>,
+    wifi: bool,
+    confirm_reset: bool,
+    toasts: Toasts,
+}
+
+impl Settings {
+    fn new() -> Self {
+        Self {
+            nav: NavState::new(Page::Root),
+            wifi: true,
+            confirm_reset: false,
+            toasts: Toasts::with_max_visible(3),
+        }
+    }
+
+    fn root_page(&self, theme: &Theme) -> View<Msg> {
+        list::list(
+            theme,
+            [
+                ListItem::new("Wi-Fi")
+                    .icon(symbol::WIFI)
+                    .trailing(switch(self.wifi).on_value_changed(|_| Msg::ToggleWifi))
+                    .view(theme)
+                    .key(Key::Named("wifi")),
+                nav::link(theme, "Display", Msg::Nav(NavMsg::Push(Page::Display)))
+                    .key(Key::Named("display")),
+                ListItem::new("Reset")
+                    .on_click(Msg::AskReset)
+                    .view(theme)
+                    .key(Key::Named("reset")),
+            ],
+        )
+    }
+
+    fn display_page(&self, theme: &Theme) -> View<Msg> {
+        Panel::new("Display")
+            .action(panel::icon_button(theme, symbol::SAVE, Msg::Save))
+            .child(label("Only Wi-Fi is configurable on this screen."))
+            .view(theme)
+    }
+}
+
+impl App for Settings {
+    type Msg = Msg;
+
+    fn update(&mut self, msg: Msg) {
+        match msg {
+            Msg::Nav(msg) => self.nav.update(msg),
+            Msg::ToggleWifi => self.wifi = !self.wifi,
+            Msg::AskReset => self.confirm_reset = true,
+            Msg::CancelReset => self.confirm_reset = false,
+            Msg::Reset => {
+                self.confirm_reset = false;
+                self.wifi = true;
+                self.nav.update(NavMsg::Root);
+            }
+            Msg::Save => {
+                self.toasts
+                    .push_kind(ToastKind::Success, "Settings saved", 2000);
+            }
+            Msg::DismissToast(id) => self.toasts.dismiss(id),
+            Msg::Tick(elapsed) => {
+                self.toasts.advance(elapsed);
+            }
+        }
+    }
+
+    fn view(&self, theme: &Theme) -> View<Msg> {
+        let page = match self.nav.current() {
+            Page::Root => self.root_page(theme),
+            Page::Display => self.display_page(theme),
+        };
+        nav::view(&self.nav, theme, "Settings", page, Msg::Nav(NavMsg::Back))
+    }
+
+    fn overlay(&self, theme: &Theme) -> Option<View<Msg>> {
+        let mut stack = Vec::new();
+        if self.confirm_reset {
+            stack.push(
+                Dialog::new("Reset settings?")
+                    .text("Wi-Fi returns to its default value.")
+                    .button("Cancel", Msg::CancelReset)
+                    .primary("Reset", Msg::Reset)
+                    .on_dismiss(Msg::CancelReset)
+                    .view(theme),
+            );
+        }
+        if !self.toasts.is_empty() {
+            stack.push(toast::view(&self.toasts, theme, Msg::DismissToast));
+        }
+        (!stack.is_empty()).then(|| layers(stack))
+    }
+}
+```
+
+</details>
+
+对话框与提示条都属于覆盖层状态：只有 `confirm_reset` 为真或队列非空时，`overlay` 才返回它们；返回 `None` 会删除覆盖层树。提示条可见期间，平台投递 `Msg::Tick(elapsed)`；示例在帧循环中执行这一步，并在队列为空时跳过消息。
+
+## 选择组合组件
+
+默认启用的 `components` 特性提供 `rs_lvgl_ui::components`：这些组合界面由普通 `View` 树构成，不持有原生句柄。每个视图返回 `View<M>`，并保留与手写视图相同的键、受控值、样式和 `View::map` 行为。使用 `default-features = false` 时需要显式加入 `components`。
+
+该模块覆盖 LVGL 9.6 已弃用的布局（`lv_list`、`lv_win`、`lv_menu`）以及应用常见的覆盖层组合。组件只依赖核心控件，因此启用 `components` 不会引入可选控件特性；在列表行中放置开关的界面仍需 `widget-switch`。
+
+| 模块 | 状态归属 | 入口 |
+| --- | --- | --- |
+| `list` | 无状态 | `list`、`section`、`ListItem`，支持图标、详情或尾部节点、箭头、选中与点击 |
+| `panel` | 无状态 | 带标题、头部操作与内容区的 `Panel`；`icon_button` |
+| `nav` | 应用持有 | `NavState<P>`、`NavMsg<P>`、`link`、`view` |
+| `file_explorer` | 应用提供条目 | `FileEntry`、`view` |
+| `dialog` | 无状态覆盖层 | 带正文、底部按钮与遮罩关闭的 `Dialog` |
+| `toast` | 应用持有 | `Toasts`、`ToastKind`、`view` |
+| `layers` | 覆盖层组合 | `layers(children)` |
+
+无状态构建器不保存应用状态，可见性、选中项和数据仍由 `App` 决定。有状态类型只是普通结构体：应用保存 `NavState<P>` 与 `Toasts`，在 `update` 中修改，在 `view` 中只读渲染。
+
+## 主题与特性边界
+
+组件从传入 `view` 的 `Theme` 读取颜色与字体令牌；`Theme::dark()` 与 `Theme::light()` 提供内置集合。主题不会替换 LVGL 的原生主题。组件主要使用中性节点与显式令牌样式，因此原生浅色主题的阴影不会渗入深色界面。启用 `font-montserrat-28` 时 `Theme::title_font` 为 Montserrat 28，否则为 Montserrat 14。
+
+- `components` 属于默认特性集。关闭默认特性后，需要重新加入该特性才能使用此模块。
+- `input-keypad` 提供焦点组、`View::focusable`/`modal` 与对话框的模态范围。它不会为纯指针界面自动启用焦点，参见[响应输入](./input-and-events.mdx)。
+- 列表行或面板包含 `switch` 时才需要 `widget-switch`。组合模块本身不依赖它。
+- `simulator` 用于宿主示例与工作台，不是组件的库依赖。
+
+## 可运行示例
+
+[components.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/components.rs) 在同一个应用中使用导航、列表行、面板、重置对话框与成功提示条，并演示只在队列非空时投递 tick 消息来推进提示条。
+
+```sh
+cargo run -p rs_lvgl_ui --example components --features simulator
+```
+
+该示例目标要求 `simulator`、`components` 和 `widget-switch`。它会打开 SDL 窗口，需要 SDL2 与可交互显示；`COMPONENTS_FRAMES=<n>` 可改为有界冒烟运行。该命令需要显示，不是无头检查。
+
+<GuideLinks items={["device", "features"]} />

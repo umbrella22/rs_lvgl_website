@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "一次开关操作，怎样更新画面",
+    "locale": "zh-CN",
+    "output": ".archify/dataflow-message-flow-zh-20261026-175054/message-flow.html",
+    "quality_profile": "showcase"
+  },
+  "stages": [
+    {
+      "label": "输入"
+    },
+    {
+      "label": "回调"
+    },
+    {
+      "label": "UI 运行时"
+    },
+    {
+      "label": "应用"
+    },
+    {
+      "label": "应用视图"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "switch",
+      "label": "开关",
+      "sublabel": "VALUE_CHANGED",
+      "type": "frontend",
+      "stage": 0,
+      "row": 0
+    },
+    {
+      "id": "handler",
+      "label": "值转换",
+      "sublabel": "value != 0",
+      "type": "backend",
+      "stage": 1,
+      "row": 0
+    },
+    {
+      "id": "queue",
+      "label": "EventQueue<M>",
+      "sublabel": "Enabled(bool)",
+      "type": "messagebus",
+      "stage": 2,
+      "row": 0
+    },
+    {
+      "id": "update",
+      "label": "App::update",
+      "sublabel": "enabled / changes",
+      "type": "backend",
+      "stage": 3,
+      "row": 0
+    },
+    {
+      "id": "view",
+      "label": "App::view",
+      "sublabel": "View<Message>",
+      "type": "backend",
+      "stage": 3,
+      "row": 2
+    },
+    {
+      "id": "theme",
+      "label": "Theme",
+      "sublabel": "颜色、间距与样式",
+      "type": "backend",
+      "stage": 2,
+      "row": 2
+    },
+    {
+      "id": "render",
+      "label": "校验与协调",
+      "sublabel": "Ui::render",
+      "type": "backend",
+      "stage": 4,
+      "row": 2
+    },
+    {
+      "id": "failure",
+      "label": "UiError",
+      "sublabel": "无效描述会被拒绝",
+      "type": "backend",
+      "stage": 4,
+      "row": 4
+    }
+  ],
+  "flows": [
+    {
+      "id": "read-value",
+      "from": "switch",
+      "to": "handler",
+      "label": "i32"
+    },
+    {
+      "id": "post-message",
+      "from": "handler",
+      "to": "queue",
+      "label": "Message"
+    },
+    {
+      "id": "drain-message",
+      "from": "queue",
+      "to": "update",
+      "label": "Ui::drain"
+    },
+    {
+      "id": "updated-state",
+      "from": "update",
+      "to": "view",
+      "label": "更新后的状态"
+    },
+    {
+      "id": "borrow-theme",
+      "from": "theme",
+      "to": "view",
+      "label": "&Theme"
+    },
+    {
+      "id": "new-description",
+      "from": "view",
+      "to": "render",
+      "label": "View<M>"
+    },
+    {
+      "id": "apply-native",
+      "from": "render",
+      "to": "switch",
+      "label": "静默同步外观",
+      "route": "bottom-channel",
+      "fromSide": "bottom",
+      "toSide": "bottom"
+    },
+    {
+      "id": "invalid-view",
+      "from": "render",
+      "to": "failure",
+      "label": "校验失败",
+      "fromSide": "right",
+      "toSide": "right",
+      "route": "vertical-channel",
+      "channelX": 1034
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "回调只投递消息",
+      "items": [
+        "原生值 1/0 被映射成 Enabled(true/false)，回调不会直接执行 App::update。",
+        "队列满时丢弃最旧消息，并计入 dropped；它不是无限缓冲区。",
+        "视图写回时抑制程序化值变化事件，避免将自己的更新再次入队。"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "批处理后再生成视图",
+      "items": [
+        "Ui::drain 按预算处理消息，再协调一次。没有消息且没有 dirty 标记时跳过。",
+        "图中展示消息路径；LVGL 绘制和动画仍由平台计时循环推进。"
+      ]
+    }
+  ]
+}

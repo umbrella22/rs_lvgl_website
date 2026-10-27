@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "generator": "archify 3.1.0",
+  "evidenceSha256": "71e6c7644460abb701ec95468cd0d712f1a79c4bce8faf96a519311b89c14086",
+  "figures": [
+    {
+      "id": "data-model",
+      "locale": "zh",
+      "type": "class",
+      "title": "状态、消息与视图的分工",
+      "viewBox": [
+        809,
+        446
+      ],
+      "candidateSha256": "e3a0ab391ab592df8ac0bcd85ad0e4e4c451e582e923c010fb84904f3033b784",
+      "archifyHtmlSha256": "ffc45b37b4c751206d9b895c7f84010b3c2fb251f8fc3d82cc84e69681c1cdc0",
+      "normalizedArchifyHtmlSha256": "23f5e72a993a1f69458b991f34309a7148ef5e012d9401cbe6ddd0fdc22db9fd",
+      "htmlSha256": "3e90ec4afbdca19283337acdf0b3ea78fd59fb06424016cad75770dcf77bc28b",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    {
+      "id": "message-flow",
+      "locale": "zh",
+      "type": "dataflow",
+      "title": "一次开关操作，怎样更新画面",
+      "viewBox": [
+        1084,
+        740
+      ],
+      "candidateSha256": "b4266d41a15b2a2bbaedee9a4001db5d908c6a7fd2f2d7199dc5a0698213e4c9",
+      "archifyHtmlSha256": "940d9007c57e4c60bc9bcaaf22a9bea95cb17cfae7bf5702aebc4af79cd4a4f8",
+      "normalizedArchifyHtmlSha256": "4ece509258424177d5545eebbf6562884a14635b34868577c61ea79dae11a6e0",
+      "htmlSha256": "f3f9824135edb470472964c244e21b7125a95e6976d264c6eb39ec788c3a2311",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    {
+      "id": "build-path",
+      "locale": "zh",
+      "type": "dataflow",
+      "title": "一份目标配置，连接 C 与 Rust",
+      "viewBox": [
+        1068,
+        740
+      ],
+      "candidateSha256": "ec2eefaca8b61095267911c0a8f1b0049a67fb0f848112bba856dffb50422c4c",
+      "archifyHtmlSha256": "27f4eb6ff1155f336e8cb87b9d656483e5299ff3d2d1fa6403bb2a7a8d5b365f",
+      "normalizedArchifyHtmlSha256": "3f71b09e7e6b2be616693d9319f34358234fc3749ebcb2297c7024a855777c75",
+      "htmlSha256": "2cd9fc8ba3e2bed2d68c22e30de35f33336c88427770daee1d6458b2d6548f26",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    {
+      "id": "capabilities",
+      "locale": "zh",
+      "type": "tree",
+      "title": "构建一个应用，需要哪些能力",
+      "viewBox": [
+        770,
+        851
+      ],
+      "candidateSha256": "bb780358dfe6d7838a1f0c86019e29708c81992669b37237eb315778620537e0",
+      "archifyHtmlSha256": "8f51cb8b2dae508a1852832e9e3858867984b5448e961349ff6ba8995ce03632",
+      "normalizedArchifyHtmlSha256": "5fb558ff36410b2789f1d24e2d72d1b7379a93c6f97db3284ea90c48346637dc",
+      "htmlSha256": "109e5b9fea17a8ae5cc704c2eb14c477f575988873c18f69e17c0a8b1015e5ab",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    {
+      "id": "data-model",
+      "locale": "en",
+      "type": "class",
+      "title": "State, messages and view ownership",
+      "viewBox": [
+        809,
+        446
+      ],
+      "candidateSha256": "295cf69797a84f6bb380f85317d530e50d43aa61ba929b3fa14b931cfbf249eb",
+      "archifyHtmlSha256": "9a536d02fc67bf9215b21fb52053324de6c7c858fc9becc890796090a22c354c",
+      "normalizedArchifyHtmlSha256": "452a86ffc41fe08610684c556f5c2f09389c6df30afb27886f8910d06fbd2b5c",
+      "htmlSha256": "58ca32cd631f8135c4462580c2b15c636849d37ec0b3a7ec08496d14ef5f0632",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    {
+      "id": "message-flow",
+      "locale": "en",
+      "type": "dataflow",
+      "title": "How one switch interaction updates the screen",
+      "viewBox": [
+        1068,
+        740
+      ],
+      "candidateSha256": "1099f098d201a64a6e597141176044f61e42ea5c066111f8c58c2175f6ea794e",
+      "archifyHtmlSha256": "5a00cf7b55bf240a7ecb33f2b163b8ced33a672ed99af604c34d27612e87fb73",
+      "normalizedArchifyHtmlSha256": "b1930d48ea845a2dd3527487437a70fd272fa28124c7ba944ed97ae50920b8ad",
+      "htmlSha256": "abdd7d0007264b18491ebfb83ca8cf47402bb7064905a3b41c303b5dbfb4ab48",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    {
+      "id": "build-path",
+      "locale": "en",
+      "type": "dataflow",
+      "title": "One target configuration connects C and Rust",
+      "viewBox": [
+        1068,
+        740
+      ],
+      "candidateSha256": "12d257fba97b7983da3c07f0ca4eab9012b0c172cbb8e3fabc773c0648f6fb62",
+      "archifyHtmlSha256": "e5ae8e7ae35a96b7cc2bbd6a1204b063ebcb8bd5c8e2851e7baad899a0bbf405",
+      "normalizedArchifyHtmlSha256": "7b6e2a4c5e78ea7d9a1bf3d4ae343b9b17e5f7656e6a897831543f1dc94bfc10",
+      "htmlSha256": "009f2173bd4fcdf8eba1260e9f5bd2fe37b2e70c737ceb53142f3020364ab759",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    {
+      "id": "capabilities",
+      "locale": "en",
+      "type": "tree",
+      "title": "Capabilities that make an application",
+      "viewBox": [
+        902,
+        935
+      ],
+      "candidateSha256": "fd6a21263f49ef56962f89936a4b1ff92d8ad03e155a1003027722b750563376",
+      "archifyHtmlSha256": "6bc67eb4c3eccdbb37b2aead32d4095d37f1cb54cb5c87f2037cf4ba4884d8d8",
+      "normalizedArchifyHtmlSha256": "aa6291803875e5f0db38dab5de1ef9fbe5d06680b20ae9b9be0574ba46736da2",
+      "htmlSha256": "06e0e7be7af0f92f2c48b45df6aadb5f3343afec922354e0a5476075db57118f",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    }
+  ]
+}

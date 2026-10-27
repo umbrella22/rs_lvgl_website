@@ -1,0 +1,49 @@
+{
+  "name": "rs-lvgl-docs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Bilingual usage documentation for rs_lvgl",
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "test": "node --test scripts/*.test.mjs",
+    "dev": "rspress dev",
+    "build": "rspress build",
+    "preview": "rspress preview",
+    "check-docs": "node scripts/check-docs.mjs",
+    "typecheck": "tsc --noEmit",
+    "examples:render": "node scripts/render-examples.mjs",
+    "examples:check": "node scripts/render-examples.mjs --check",
+    "prebuild": "npm run diagrams:check && npm run examples:check && npm run wasm:ensure && npm run playground:wasm:ensure && npm run browser-engine:ensure",
+    "playground": "npm run build && node scripts/playground-server.mjs",
+    "check-playground": "node scripts/check-playground.mjs",
+    "wasm:build": "node scripts/build-wasm.mjs",
+    "wasm:check": "node scripts/build-wasm.mjs --check",
+    "wasm:ensure": "node scripts/build-wasm.mjs --ensure",
+    "check-wasm": "node scripts/check-wasm.mjs",
+    "playground:wasm:build": "node scripts/build-playground.mjs",
+    "playground:wasm:check": "node scripts/build-playground.mjs --check",
+    "playground:wasm:ensure": "node scripts/build-playground.mjs --ensure",
+    "check-interactive": "node scripts/check-interactive.mjs",
+    "diagrams:check": "node scripts/check-diagrams.mjs",
+    "diagrams:sync": "node scripts/sync-diagrams.mjs",
+    "browser-engine:build": "node scripts/browser-engine-build.mjs",
+    "browser-engine:ensure": "node scripts/browser-engine-build.mjs --ensure",
+    "browser-engine:assets": "node scripts/browser-engine-build.mjs --check",
+    "browser-engine:check": "node scripts/browser-engine-check.mjs"
+  },
+  "devDependencies": {
+    "@codemirror/lang-rust": "6.0.2",
+    "@codemirror/language": "6.13.1",
+    "@codemirror/lint": "6.9.7",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.15",
+    "@lezer/highlight": "1.2.5",
+    "@rspress/core": "2.0.23",
+    "@types/node": "24.19.2",
+    "codemirror": "6.0.2",
+    "typescript": "7.0.2"
+  }
+}

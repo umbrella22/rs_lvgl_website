@@ -1,0 +1,73 @@
+[
+  {
+    "type": "section-header",
+    "label": "Getting started"
+  },
+  {
+    "type": "file",
+    "name": "getting-started",
+    "label": "Quick start"
+  },
+  {
+    "type": "file",
+    "name": "browser-playground",
+    "label": "Try code in the browser"
+  },
+  {
+    "type": "section-header",
+    "label": "Build an interface"
+  },
+  {
+    "type": "file",
+    "name": "declarative-ui",
+    "label": "Arrange widgets"
+  },
+  {
+    "type": "file",
+    "name": "input-and-events",
+    "label": "Handle input"
+  },
+  {
+    "type": "file",
+    "name": "components",
+    "label": "Reuse components"
+  },
+  {
+    "type": "section-header",
+    "label": "Device integration"
+  },
+  {
+    "type": "file",
+    "name": "native-integration",
+    "label": "Display and native setup"
+  },
+  {
+    "type": "file",
+    "name": "features",
+    "label": "Widgets and fonts"
+  },
+  {
+    "type": "file",
+    "name": "ui-runtime",
+    "label": "Mount and update"
+  },
+  {
+    "type": "section-header",
+    "label": "Reference"
+  },
+  {
+    "type": "file",
+    "name": "examples",
+    "label": "Run examples"
+  },
+  {
+    "type": "file",
+    "name": "troubleshooting",
+    "label": "Troubleshooting"
+  },
+  {
+    "type": "file",
+    "name": "development",
+    "label": "Contribute"
+  }
+]

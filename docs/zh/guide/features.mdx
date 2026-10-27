@@ -1,0 +1,224 @@
+---
+title: 选择控件与字体
+description: 通过 Cargo features 选择 LVGL 控件、字体、媒体扩展和输入方式，检查原生依赖与应用头文件。
+---
+
+import { ArchifyDiagram } from '../../../components/ArchifyDiagram';
+import { ConceptDiagram } from '../../../components/ConceptDiagram';
+import { GuideLinks } from '../../../components/GuideLinks';
+
+# 选择控件与字体
+
+默认配置适合先运行示例。准备部署到设备时，可以关闭默认特性，只启用界面需要的控件和字体。Rust 的 `use` 语句只导入名称，启用控件需要修改 Cargo 配置。
+
+## 为一个设置页选择特性
+
+假设页面使用列表、滑块和开关，文字使用 Montserrat 20。下面保留分配器和组合组件，并选择这几项能力。路径假设应用目录与仓库目录相邻。
+
+```toml
+[dependencies]
+[dependencies.rs_lvgl_ui]
+path = "../rs_lvgl/rs_lvgl_ui"
+default-features = false
+features = [
+    "alloc", "components", "widget-slider", "widget-switch",
+    "font-montserrat-20",
+]
+```
+
+这份配置会编译 slider 依赖的原生 bar，但不会自动导出 Rust 的 `bar(...)` 构造函数。需要单独使用进度条时，再加入 `widget-bar`。如果其他依赖仍启用了默认特性，Cargo 会把那些特性一起合并进来。
+
+## 默认编译什么
+
+没有应用头文件时，构建编译仓库内置的 LVGL 配置。该头文件启用核心控件集
+（可选媒体和输入扩展保持关闭）、Montserrat 12、14、16、28、48，使用 CLIB
+分配器，并关闭 SDL 和日志。
+
+各 crate 的默认值并不相同：
+
+| Crate | 默认 feature | 结果 |
+| --- | --- | --- |
+| `rs_lvgl` | `embedded_graphics`、`drivers` | 手写控件、显示、输入和遗留兼容模块。单独使用时它不选择 `minimal-config`，因此内置的完整配置保持生效。 |
+| `rs_lvgl_ui` | `alloc`、`components`、`widgets-all`、`fonts-vendored` | 声明式 UI、组合组件、核心类型化控件集，以及 Montserrat 12、16、28、48。 |
+
+`rs_lvgl_ui` 总会为它的依赖启用 `rs_lvgl_sys/minimal-config`。该 feature
+让内置头文件从较小的选择开始，而不是完整配置；`widgets-all` 再补回类型化
+控件，所以默认 UI 构建仍暴露核心集合。目标构建应关闭默认 feature，只选择
+实际使用的能力。
+
+Montserrat 14 以及核心 object、label、button 类始终存在。
+`rs_lvgl_ui::Font::montserrat_14()` 无条件可用；其他 Montserrat
+方法只在对应 feature 启用时存在。
+
+## 控件与字体
+
+`rs_lvgl_ui` 把可选控件映射为 `widget-<name>` feature。只有选中该 feature
+时，类型化构造器、`WidgetKind` 变体和控件专用修饰方法才存在。原生依赖会
+自动启用：
+
+| Feature | 同时启用的原生能力 |
+| --- | --- |
+| `widget-keyboard` | button matrix、textarea |
+| `widget-calendar` | button matrix |
+| `widget-slider` | bar |
+| `widget-spinbox` | textarea |
+| `widget-spinner` | arc |
+| `widget-animimage`、`widget-msgbox`、`widget-canvas` | image |
+| `widget-qrcode` | canvas、image |
+| `widget-barcode` | canvas、image |
+| `widget-gif` | image 和 GIF 解码器 |
+| `widget-lottie` | canvas、image、矢量图形、矩阵、浮点、内部 ThorVG |
+| `widget-ime-pinyin` | keyboard、button matrix、textarea |
+
+即使类型化 feature 未启用，原生依赖仍会在 C 中编译。例如
+`widget-slider` 会启用 `LV_USE_BAR`，但在选择 `widget-bar` 之前
+`bar` 不可用。
+
+默认字体集是 `fonts-vendored`：Montserrat 12、16、28、48。启用
+`font-montserrat-28` 时主题用 Montserrat 28 显示标题，否则回退到
+Montserrat 14。中文等 CJK 文本需要 `font-cjk-14` 或 `font-cjk-16`，并
+使用 `Font::cjk_14()` 或 `Font::cjk_16()`；Montserrat 字体不包含 CJK
+字形。
+
+没有类型化节点的控件（`list`、`menu`、`win`）在关闭 `widgets-all`
+时通过 `rs_lvgl_sys/widget-<name>` 启用。它们仍是原始
+`rs_lvgl_sys` 控件，UI crate 不包装它们。
+
+## 可选扩展
+
+`widget-qrcode`、`widget-barcode`、`widget-gif`、`widget-lottie`、
+`widget-ime-pinyin` 和 CJK 字体独立于 `widgets-all`，只启用应用实际使用
+的扩展。
+
+Lottie 会改变整个统一 feature 图的原生类型：矢量图形、矩阵支持和浮点精确
+坐标。C 与 C++ 编译、bindgen 和 Rust API 必须对该配置达成一致。主机检查
+不会验证外部预编译 LVGL，本构建也不提供这种方式。
+
+拼音输入同一时刻只使用一个活动键盘，并绑定到 textarea 的 `keyboard_id`。
+候选栏需要 CJK 字体。
+
+## 输入 feature
+
+`input-keypad` 增加类型化 keypad 驱动和每 UI 焦点组，同时启用
+`rs_lvgl` 的 `alloc`。`input-gridnav` 增加空间导航，并隐含
+`input-keypad`。仅启用 feature 不会让现有纯触摸界面获得焦点；需要调用
+`Ui::bind_keypad`、`Ui::bind_input` 或 `Ui::enable_focus`。
+
+```sh
+cargo run -p rs_lvgl_ui --example input --features simulator,input-keypad
+```
+
+`gridnav` 是 `input-gridnav` 背后的原生能力。只启用
+`rs_lvgl_sys/gridnav` 会编译原生模块，但不会加入 UI 焦点行为。
+
+## 模拟器与 showcase
+
+主机模拟器使用 LVGL 自带的 SDL2 后端。它不依赖 Rust `sdl2` 绑定，SDL 事件
+在 C 中处理。`rs_lvgl_ui` 以 `simulator` 暴露该能力；`rs_lvgl` 暴露
+底层 `sdl` feature。构建时必须有 SDL2 和可用的 C 工具链；优先使用
+pkg-config，失败时回退到 `sdl2-config`。
+
+```sh
+cargo run -p rs_lvgl_ui --example studio --features showcase
+cargo run -p rs_lvgl_ui --example capabilities --features capability-gallery
+cargo run -p rs_lvgl_ui --example sdl_demo --features simulator
+```
+
+`showcase` 是主机演示集合：`alloc`、`widgets-all`、`fonts-vendored`、
+`capability-gallery`，外加 Montserrat 20 和 32。`capability-gallery` 包含
+模拟器、组件、网格导航、Canvas、QR、条码、GIF、Lottie、拼音、textarea 和
+CJK 16。这些 feature 改变示例可用性，不改变未选择它们的应用库默认值。
+
+## 分配与初始化
+
+`alloc` 启用 `rs_lvgl` 的分配器支持，`rs_lvgl_ui` 必须使用它。
+`no_std` 仍允许分配；该 feature 选择的是支持分配的 API。不能使用 `ctor`
+钩子的裸机目标还要启用 `no-autoinit`，并在任何 LVGL 或 UI 调用之前执行
+`rs_lvgl::init()`。
+
+```sh
+cargo check -p rs_lvgl_ui --no-default-features --features alloc
+cargo check -p rs_lvgl_ui --target riscv32imafc-unknown-none-elf \
+  --no-default-features --features alloc,no-autoinit
+```
+
+`lvgl_alloc` 更进一步，为 Rust 分配安装基于 LVGL 的全局分配器。装箱值随后
+使用 `lv_malloc` 和 `lv_free`，因此分配与释放必须配对，LVGL 堆必须已
+初始化。只有该全局分配策略适合应用时才启用；UI 层不需要它。
+
+`rust_timer` 暴露 `rs_lvgl::timer`，用 Rust 时钟向
+`lv_tick_set_cb` 提供 tick。底层的 `rs_lvgl_sys` 定时器 feature 是为兼容
+保留的空操作；LVGL 9 的 tick 回调是运行时 API。
+
+## 使用自己的 lv_conf.h
+
+`minimal-config` 是面向内置配置的模式。没有应用头文件时，除 14 之外的每个
+可选控件和 Montserrat 字号默认关闭，除非其自身 feature 或依赖它的 feature
+启用。核心 object、label、button 和 Montserrat 14 保持开启。
+
+该模式不会对应用头文件做减法。设置 `LVGL_CONFIG_PATH` 后，头文件是唯一
+依据，构建不会修改它。显式启用的控件、字体、扩展和 SDL feature 会与头文件的
+生效宏核对：
+
+- 请求 `widget-slider` 需要 `LV_USE_SLIDER`，其原生依赖
+  `LV_USE_BAR` 也必须启用。
+- 请求 `font-montserrat-28` 需要 `LV_FONT_MONTSERRAT_28`。
+- 请求 `sdl` 需要 `LV_USE_SDL`；头文件启用 `LV_USE_SDL` 时也必须启用
+  Cargo `sdl`。
+- Lottie 需要头文件中的内部 ThorVG 以及相关矢量、矩阵和浮点设置。
+
+关闭核心类或 Montserrat 14 的原始头文件不能用于 `rs_lvgl_ui`。UI crate
+还有手写 API，其 Cargo feature 必须保持选中；仅靠生成包装器不能描述这部分
+公开接口。
+
+官方控件 demo 是默认路径上的例外：`rs_lvgl_sys/lv-demo-widgets` 需要完整
+集合，两者同时选择时构建会给出警告并忽略 `minimal-config`。应用头文件不
+适用这条规则。
+
+## 检查为什么仍有额外控件
+
+Cargo feature 是叠加的。依赖图中任一 crate 启用 `widget-chart`，整个构建
+都会启用 chart，包括原本请求更小集合的依赖。`minimal-config` 不会移除
+另一个 crate 已启用的能力。要判断某个控件为何仍然存在，检查解析结果：
+
+```sh
+cargo tree -e features -i rs_lvgl_sys
+```
+
+应用头文件不参与 Cargo feature 解析。它可以启用没有任何 Cargo feature 请求
+的能力；Cargo 也可以请求头文件已关闭的能力。后者会让构建失败，前者会得到比
+feature 列表更大的原生配置。
+
+不要把 `--all-features` 当作受支持配置的捷径。该集合包含仅 nightly 和由
+应用提供的集成路径，成功的并集并不描述可部署构建。
+
+## 查看各层提供的功能
+
+<ArchifyDiagram id="capabilities" />
+
+基础描述、可选特性和平台接入共同组成应用。图中的分组帮助确定需要哪一层；下面的 Cargo 配置与特性表给出实际启用方式。
+
+### 特性如何影响构建
+
+选择一项 feature 会产生两个可见结果：Rust API 暴露对应构造函数，原生构建包含它需要的 LVGL 能力。控件的原生依赖不会自动使该依赖的 Rust 构造函数可用。
+
+<ConceptDiagram kind="features" />
+
+例如，选择 `widget-slider` 会启用 slider API 及其原生 bar 依赖。Rust 的 `use` 语句只把已存在的名称引入作用域，不会选择 Cargo feature。使用应用头文件时，构建核对头文件是否满足请求的能力，不会改写其中的宏。
+
+## 验证
+
+feature 变更需要检查实际选择，而不只是默认构建：
+
+```sh
+cargo check -p rs_lvgl_ui --no-default-features --features alloc
+cargo check -p rs_lvgl_ui --no-default-features --features alloc,components
+cargo check -p rs_lvgl_ui --no-default-features --features alloc,widget-slider
+cargo check -p rs_lvgl --no-default-features --lib
+```
+
+仓库 CI 还会运行 showcase 示例、无默认 feature 的库检查，以及
+`lvgl_alloc` 加 `rust_timer` 的组合。主机检查通过只说明 feature 图可以编译，
+不能说明目标渲染、缩小后的链接镜像，或与外部提供方的兼容性。
+
+<GuideLinks items={["device", "runtime"]} />

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>rs_lvgl · Browser studio</title>
+  <link rel="stylesheet" href="./studio.css">
+</head>
+<body>
+  <div class="display" id="display" aria-busy="true">
+    <canvas width="1280" height="860" id="screen" tabindex="0" aria-label="Interactive LVGL component studio"></canvas>
+    <div class="loading" id="loading" role="status"><p id="loading-text"></p><button id="restart" hidden>Restart</button></div>
+  </div>
+  <footer>
+    <span id="status" role="status" aria-live="polite"></span>
+    <span id="hint" tabindex="-1"></span>
+  </footer>
+  <script type="module" src="./studio.mjs"></script>
+</body>
+</html>

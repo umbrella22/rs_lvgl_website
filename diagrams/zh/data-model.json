@@ -1,0 +1,184 @@
+{
+  "schema_version": 1,
+  "diagram_type": "class",
+  "meta": {
+    "title": "状态、消息与视图的分工",
+    "locale": "zh-CN",
+    "output": ".archify/class-data-model-zh-20261026-163429/data-model.html",
+    "quality_profile": "showcase"
+  },
+  "layout": {
+    "mode": "grid",
+    "gapX": 105,
+    "gapY": 120
+  },
+  "types": [
+    {
+      "id": "settings",
+      "label": "Settings",
+      "kind": "record",
+      "sublabel": "应用自己持有状态",
+      "row": 0,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        },
+        {
+          "name": "changes",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "id": "app",
+      "label": "App",
+      "kind": "interface",
+      "sublabel": "应用实现的 Rust trait",
+      "row": 0,
+      "col": 1,
+      "methods": [
+        {
+          "name": "update",
+          "parameters": "Msg"
+        },
+        {
+          "name": "view",
+          "parameters": "&Theme",
+          "returns": "View<Msg>"
+        }
+      ]
+    },
+    {
+      "id": "ui",
+      "label": "Ui<M>",
+      "kind": "record",
+      "sublabel": "挂载对象、主题与消息队列",
+      "row": 0,
+      "col": 2,
+      "methods": [
+        {
+          "name": "mount",
+          "parameters": "&A"
+        },
+        {
+          "name": "drain",
+          "parameters": "&mut A, usize"
+        }
+      ]
+    },
+    {
+      "id": "message",
+      "label": "Message",
+      "kind": "enum",
+      "sublabel": "输入意图，不是状态容器",
+      "row": 1,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "Enabled(bool)"
+        },
+        {
+          "name": "Reset"
+        }
+      ]
+    },
+    {
+      "id": "view",
+      "label": "View<M>",
+      "kind": "record",
+      "sublabel": "Node<M> 的别名：描述值",
+      "row": 1,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "key",
+          "type": "Key"
+        },
+        {
+          "name": "kind",
+          "type": "WidgetKind"
+        },
+        {
+          "name": "children",
+          "type": "Vec<Node<M>>"
+        },
+        {
+          "name": "handlers",
+          "type": "HandlerSet<M>"
+        }
+      ]
+    },
+    {
+      "id": "theme",
+      "label": "Theme",
+      "kind": "record",
+      "sublabel": "由 Ui 持有，view 借用",
+      "row": 1,
+      "col": 2
+    }
+  ],
+  "relationships": [
+    {
+      "id": "implements",
+      "from": "settings",
+      "to": "app",
+      "kind": "realization",
+      "label": "impl App"
+    },
+    {
+      "id": "handles",
+      "from": "settings",
+      "to": "message",
+      "kind": "dependency",
+      "label": "处理消息"
+    },
+    {
+      "id": "describes",
+      "from": "app",
+      "to": "view",
+      "kind": "dependency",
+      "label": "view()"
+    },
+    {
+      "id": "borrows",
+      "from": "ui",
+      "to": "app",
+      "kind": "dependency",
+      "label": "借用应用"
+    },
+    {
+      "id": "owns-theme",
+      "from": "ui",
+      "to": "theme",
+      "kind": "composition",
+      "label": "持有"
+    },
+    {
+      "id": "emits",
+      "from": "view",
+      "to": "message",
+      "kind": "dependency",
+      "label": "事件映射"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "谁拥有数据",
+      "items": [
+        "Settings 保存 enabled 和 changes；Ui::drain 只借用应用来处理消息。",
+        "Ui 保存主题、队列和挂载树；它不接管 Settings 的所有权。"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "描述与原生对象",
+      "items": [
+        "View 是普通 Rust 描述值，构造时不会创建 LVGL 对象。",
+        "只列出相关成员，方法签名已简写；View 的字段通过构造函数和修饰方法设置。"
+      ]
+    }
+  ]
+}

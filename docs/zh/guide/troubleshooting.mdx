@@ -1,0 +1,277 @@
+---
+title: 故障排查
+description: 按阶段定位 Rust 编译、视图校验与渲染错误，继续诊断原生工具链、配置冲突、控件与字体、显示刷新、计时循环及资源销毁问题。
+---
+
+import { ConceptDiagram } from '../../../components/ConceptDiagram';
+
+# 故障排查
+
+先找最早出现的错误。编译器找不到、控件构造函数缺失、界面不刷新，处理方式各不相同；后续报错往往是同一个问题引起的。
+
+| 症状 | 从哪里检查 |
+| --- | --- |
+| 演练场的运行按钮不可用 | 打开“运行设置”；选择浏览器即可直接运行支持的语法，选择本地 Rust 编译器则需要打开服务打印的地址 |
+| `Unable to find libclang` | C 工具链与 libclang 安装 |
+| 构造函数不存在或配置冲突 | Cargo features 与生效的 `lv_conf.h` |
+| 已编译，但文字不显示 | 字体字形与字体描述符 |
+| 控件能显示，状态或动画不更新 | tick、定时器派发与 `Ui::drain` |
+| 退出或释放时崩溃 | 挂载树、显示别名与未完成的刷新 |
+
+## 先识别演练场的错误阶段
+
+[演练场](../playground.mdx)按失败阶段报告错误。浏览器模式先检查支持的语法，再求值、校验视图并渲染；本地编译模式还会提供 rustc 诊断。
+
+<ConceptDiagram kind="errors" />
+
+| 看到的结果 | 检查方向 |
+| --- | --- |
+| 带有行号与列号的 Rust 诊断 | 修复对应语法、类型或缺失 API。构造函数不可用时，核对当前 API 版本与所选特性。 |
+| 挂载时出现 `DuplicateKey` | 同一父节点下的显式键必须各不相同，并保持稳定。不同父节点下可以使用相同键。 |
+| 挂载时出现 `InvalidProperty` | 检查属性是否适用于该控件，子节点是否添加到容器，以及网格或范围数值是否满足 API 契约。 |
+| 原生执行失败或超时 | 检查视图返回前是否发生 panic、循环或耗时操作。视图函数必须结束，LVGL 才能继续渲染。 |
+| 仍显示上次成功的预览 | 这是上一次成功运行的界面。状态栏会提示尚未应用修改，修复错误并重新运行后才会替换。 |
+| 本地服务不可用 | 在仓库根目录启动 `npm --prefix website run playground`，使用它打印的本地地址。也可以切回浏览器模式运行[支持的 Rust 语法](./browser-playground.mdx)，无需启动服务。 |
+
+先修复第一条错误，再次运行。编译诊断中的位置对应 Rust 源码；浏览器的视图校验错误指向 `view` 并描述非法节点树；本地原生错误可能没有源码位置。需要排查运行中应用的鼠标、键盘或动画行为时，使用 [SDL 示例](./examples.mdx)。
+
+## 工具链与 bindgen
+
+构建在同一次流程中编译 C 并生成绑定。缺少 C 编译器会在编译阶段失败。缺少
+libclang 或无法加载时，bindgen 在加载阶段就会 panic：常见信息是
+`Unable to find libclang`，随后是 clang-sys 列出搜索过的共享库并提示设置
+`LIBCLANG_PATH` 的消息。`Unable to generate LVGL 9.6 bindings` 是构建脚本对
+libclang 已加载后 `generate()` 错误的包装，例如头文件或 clang 参数失败；
+库找不到时不会出现这条包装信息。
+
+- 安装 C 工具链和 libclang。Debian/Ubuntu 使用 `build-essential`、`clang`
+  和 `libclang-dev`；macOS 使用 Xcode Command Line Tools。
+- 如果 libclang 不在默认加载路径，用 `LIBCLANG_PATH` 指向它。该变量属于
+  bindgen，不属于 `rs_lvgl_sys`。
+- Lottie 扩展还需要 C++14 编译器和运行时。Linux 安装 `g++`，或使用平台
+  的 C++ 工具链。
+- 交叉构建除了主机 libclang，还需要目标 C 编译器及其 sysroot。为 cc-rs 设置
+  `CC_<target>` 和 `AR_<target>`（目标名中的短横线换成下划线）。
+  `LVGL_SYSROOT` 只会把 `<值>/include` 加入 bindgen 的 clang 参数，不做校验，
+  也不传给 C 编译器，因此编译器的 sysroot 仍需单独配置。
+
+主机构建成功不能验证目标编译器、目标 sysroot 头文件或目标 ABI。
+
+## 配置路径
+
+编译前只对下面三个输入做绝对路径和存在性校验，消息会点名对应输入：
+
+| 诊断 | 处理 |
+| --- | --- |
+| `LVGL_CONFIG_PATH must be an absolute path; use Cargo [env] relative = true` | 在 `.cargo/config.toml` 中使用 `relative = true`，或在环境中传绝对路径。 |
+| `LVGL_CONFIG_PATH must name an existing file` | 修正路径或创建头文件。`LVGL_EXTRA_C_DIR`（目录）和 `LVGL_EXTRA_HEADERS`（文件）使用同样的检查。 |
+| `native header paths must be valid UTF-8` | 把头文件放到 UTF-8 路径。 |
+| `native header path cannot be represented in a C include directive` | 去掉路径中的引号和换行。 |
+| `LVGL_EXTRA_C_DIR` 收到的是文件 | 传包含源码的目录；构建会递归扫描 `.c` 文件。 |
+| 多头的 `LVGL_EXTRA_HEADERS` 中出现相对条目 | 每个头文件都必须是绝对路径，并用平台分隔符连接。 |
+
+除非 Cargo 使用 `force = true`，否则残留的 shell 变量优先于 `[env]`。
+读取 `OUT_DIR/conf/lv_conf.h` 可以确认构建实际使用了哪个头文件；其中的
+include 行会写出选中的路径。
+
+`LVGL_CFLAGS` 和 `LVGL_SYSROOT` 不经过这些路径校验；`LVGL_SYSROOT` 配错时，
+通常表现为 bindgen 找不到目标标准头文件。
+
+## 能力冲突
+
+应用头文件成为唯一依据后，Cargo 请求的 feature 必须存在于其生效宏中。构建会
+停止并报告：
+
+```text
+LVGL_CONFIG_PATH conflicts with a requested Cargo capability: LV_USE_SLIDER must be enabled
+```
+
+在头文件中启用该宏，或移除请求它的 Cargo feature。不要关闭校验或修改生成的
+绑定。同样的检查覆盖字体（`LV_FONT_MONTSERRAT_28`）、扩展和
+`LV_USE_SDL`。
+
+原生依赖也必须在同一份头文件中有效。`widget-slider` 需要
+`LV_USE_SLIDER` 和 `LV_USE_BAR`；`widget-keyboard` 需要
+`LV_USE_KEYBOARD`、`LV_USE_BUTTONMATRIX` 和 `LV_USE_TEXTAREA`。
+默认 feature 路径会自动补齐这些依赖，应用头文件不会。
+
+如果类型化 API 消失，例如 Rust 报告缺少 `Slider` 类型，说明生效配置关闭了
+该控件，或没有选择对应 feature。C 库可能仍因其他控件依赖而编译它；类型化
+包装器只在对应 feature 启用时存在。
+
+对 `rs_lvgl_ui`，保留核心 object、label、button 类、Montserrat 14 和每个
+选中的 UI 能力。删除这些内容的头文件即使原始构建通过，也不是有效的 UI
+配置。
+
+## SDL 失败
+
+`sdl` feature 在构建期要求发现 SDL2。找不到时构建会 panic，消息指出缺失
+依赖并给出包名建议。安装 SDL2 和 pkg-config 后确认：
+
+```sh
+pkg-config --cflags --libs sdl2
+```
+
+回退探测使用 `sdl2-config`。macOS 上链接器可能需要显式库目录：
+
+```sh
+LIBRARY_PATH="$(pkg-config --variable=libdir sdl2)" cargo test -- --test-threads=1
+```
+
+两类配置不一致会分别报告：
+
+- 头文件启用 `LV_USE_SDL` 但没有 Cargo `sdl` feature，失败信息为
+  `LVGL_CONFIG_PATH enables LV_USE_SDL; also enable the sdl Cargo feature for native linking`。
+- 启用 `sdl` feature 但头文件关闭 `LV_USE_SDL`，能力检查失败。
+
+模拟器使用 LVGL 的 SDL 后端，不使用 Rust `sdl2` crate。可用的 Rust `sdl2`
+依赖既不是必需条件，也不能说明原生后端配置正确。
+
+## 缺失符号
+
+`LVGL_EXTRA_HEADERS` 中的声明只让 Rust 看到函数。实现必须由
+`LVGL_EXTRA_C_DIR`（或应用自己的原生构建）编译。链接错误如
+`undefined reference to application_value` 或
+`Undefined symbols for architecture arm64`（macOS）表示声明和实现没有接上。
+
+- 把 `.c` 实现放进额外源码目录。扫描是递归的，也会跟踪新增和删除的文件。
+- 生成的字体源码也放在这里；声明过的 `application_font` 需要有定义它的
+  翻译单元。
+- 额外目录只编译 `.c`。应用 C++ 源码需要单独的构建集成；Lottie 自带的
+  ThorVG 由 crate 编译。
+- 未在生效头文件中启用 `LV_FONT_MONTSERRAT_28`，却直接使用
+  `lv_font_montserrat_28`，会产生未定义符号。在头文件启用字体，或选择对应
+  feature。
+- 不要为了补符号而链接第二个 LVGL 库。该提供方是内置的；外部预编译 LVGL
+  没有经过 ABI 验证，可能重复符号或混用配置。
+
+C++ 链接失败时，确认最终链接可以使用目标 C++ 运行时和标准库，而不只是 C
+编译器可用。
+
+## 字体
+
+`rs_lvgl_ui::Font::montserrat_14()` 无条件可用。其他字号的
+`Font::montserrat_<size>` 只在选中 `font-montserrat-<size>` feature 时
+存在。方法缺失是 feature 选择错误；直接引用原始符号不会生成 Rust 方法。
+没有 `font-montserrat-28` 时，UI 主题用 Montserrat 14 显示标题。
+
+`rs_lvgl::font::Font` 是另一种类型：它通过 `new_raw` 接收 `lv_font_t` 值，
+内置构造方法需要 `nightly` feature。
+
+CJK 文本需要 `font-cjk-14` 或 `font-cjk-16`，并使用对应的
+`Font::cjk_14()` 或 `Font::cjk_16()`。Montserrat 不包含这些字形；缺少
+字形时会回退或显示空白。
+
+自定义字体能链接但显示空白或字形错乱，通常表示描述符不完整。
+`Font::from_raw` 不做校验：
+
+- 使用匹配版本的字体转换器生成的完整 LVGL 9.6 描述符。
+- 字形表和回调必须静态存在，并在所有使用该字体的对象存活期间有效。LVGL
+  会在样式中保存指针。
+- 把生成的 `.c` 文件放在 `LVGL_EXTRA_C_DIR`，并在
+  `LVGL_EXTRA_HEADERS` 中声明符号。
+- 如果 UI 使用 `rs_lvgl_ui::symbol`，自定义字体需要包含内置符号字形；
+  它不会自动继承。
+
+不要在运行时拼出一个描述符再强转为 `lv_font_t`。主机测试只链接字体符号
+并检查 `line_height`，不能证明字形渲染。
+
+## 渲染不推进
+
+LVGL 只在平台提供时间并派发时推进定时器、动画和输入处理：
+
+- 提供 tick。用单调时钟读取自上次调用以来经过的 `Duration`，传给
+  `rs_lvgl::tick_inc`。周期源传已知间隔；循环频率变化时传每次实测时长，
+  长帧不会丢失时间。`tick_inc` 只转发整毫秒。也可以启用 `rust_timer`，用
+  `LvClock::since_init` 返回单调时间的时钟调用 `rs_lvgl::timer::update_clock`；
+  它安装 `lv_tick_set_cb`，此后 `lv_tick_get` 读取回调值，而不是 `tick_inc`
+  的累加值。只选一种来源。
+- 派发定时器。调用 `rs_lvgl::task_handler()` 或 `Ui::timer_handler()`。
+  `Ui::timer_handler` 是 `lv_timer_handler` 的薄包装。
+- 应用队列消息。原生回调只入队；`Ui::drain` 执行 `App::update` 并协调
+  界面。只调用 `timer_handler` 不调用 `drain`，界面不会变化。
+- 推进自定义控件。`Ui::tick(elapsed_ms)` 遍历有生命周期的自定义控件；
+  把用于 tick 的同一实测毫秒数传给它。`lv_timer_handler` 不会调用它们的
+  `update` 钩子。
+
+没有处理任何消息、也没有标记脏状态时，`Ui::drain` 会提前返回。在消息之外
+读取的状态（例如 `App::view` 中的时钟或传感器）需要
+`Ui::mark_dirty()` 或 `Ui::update(&app)`。返回的 `DrainStats` 说明是否
+发生协调以及丢弃了多少消息。
+
+重入调用会被拒绝。嵌套的 `Ui::timer_handler` 返回 `0`，其他重入 `Ui`
+调用返回 `UiError::Reentrant`。C 回调不得调用 `Ui` 方法、阻塞、panic 或
+删除原生对象。在 `extern "C"` 回调中 panic 会终止进程。
+
+## 显示刷新与格式
+
+`Display::register` 按 RGB888 渲染。缓冲区容量至少覆盖一行对齐宽度，回调
+只收到有效区域像素。容量为零、尺寸无效或缓冲区小于对齐行时返回
+`DisplayError::FailedToRegister`；增大 `N` 或使用整帧缓冲区。
+
+`Display::register_raw` 遵循配置的格式。回调必须：
+
+- 按真实颜色格式、区域和 stride 处理，包括行填充；
+- 只复制或传输有效区域；
+- 在传输完成后调用 `lv_display_flush_ready`，包括仍保持显示存活的错误路径；
+- 不让 panic 展开栈、不无限阻塞。
+
+安全构造器会在 Rust 回调返回后调用 `lv_display_flush_ready`。回调耗时过长
+仍会阻塞 UI 线程。异步传输时，在 flush 报告 ready 之前不要复用缓冲区。
+
+如果 SDL 在 `timer_handler` 中关闭窗口，原生显示可能在派发期间被删除。在
+处理队列更新前检查 `lv_display_get_default()`，为 null 时停止循环。示例使用
+这个保护，避免访问失效的 UI 句柄。
+
+## 销毁与别名
+
+丢弃 `Display` 句柄不会删除原生显示，也不是销毁步骤。`Display` 没有实现
+`Drop`；它的缓冲区、flush 回调、屏幕和别名会一直存活到原生显示被删除。
+
+`Display::delete(self)` 和 `rs_lvgl::deinit` 是 unsafe 操作。其安全条件是下面
+这些前提，而不是一套能让调用变安全的步骤：
+
+1. 停止渲染、异步绘制、DMA 或 GPU 工作以及待处理 flush。
+2. 如果挂载了类型化 UI，先调用 `Ui::unmount()` 删除其树并解绑输入，然后销毁
+   输入设备句柄，让它们的原生设备被删除。
+3. 确保之后没有任何屏幕、控件、动画、回调或其他显示别名会被使用。
+
+在别名或挂载树仍存在时删除显示是 use-after-free，不是可恢复错误。不要用
+`mem::forget` 掩盖 UI 句柄来消除它：原生对象仍然被释放。同理，任何 LVGL
+句柄或回调仍可能运行时，不要调用 `rs_lvgl::deinit()`。完成上述步骤本身并不
+证明条件已经满足；无法排除别名、回调或未完成传输时，不要调用这两个操作。
+
+`lv_init` 会重置原生 tick 回调。`rust_timer::update_clock` 每次更新都会
+重新注册，因此覆盖 deinit 和新的初始化周期；缓存的外部注册标志做不到
+这一点。
+
+自定义内存必须使用匹配的分配器。启用 `lvgl_alloc` 时，Rust 分配来自
+LVGL；用其他分配器释放，或用 Rust 分配器释放 LVGL 对象，都会破坏堆。使用
+默认 CLIB 分配器时，LVGL 的堆监视器观察不到 libc 分配。
+
+## 重建与环境混淆
+
+构建跟踪生效配置、应用头文件及其 include、额外源码目录、额外头文件和相关
+环境变量。配置变化应触发 `rs_lvgl_sys` 及依赖的包装器生成重新构建。
+
+- 读取 `OUT_DIR/conf/lv_conf.h` 确认生效头文件。配置了应用头文件时，它的
+  第一行 include 会写出选中路径。
+- 检查进程环境是否覆盖 `.cargo/config.toml`。
+- 只比较使用相同 `CARGO_TARGET_DIR` 的构建；不同目标目录持有不同的生成
+  配置。
+- `OUT_DIR` 中生成的头文件不会被当作新输入跟踪；改变其生成器仍会重建。
+- 怀疑旧构建时，先检查被跟踪的输入再决定是否强制重建。无条件
+  `cargo clean` 会丢弃诊断信息，并掩盖缺失的跟踪规则。
+
+## 诊断检查
+
+```sh
+cargo build
+cargo test -p rs_lvgl_sys --test build_script -- --test-threads=1
+python3 scripts/check-native-inputs.py --artifacts target/native-input-audit
+```
+
+构建脚本测试覆盖配置补丁、能力校验和 RISC-V ABI 选择。原生 runner 覆盖
+自定义配置、C 源码、字体、路径失败、缓存复用、中断编译、输出隔离和解包
+crate。这些检查在主机运行；板载显示、硬件 tick、输入投递、DMA 销毁和外部
+提供方 ABI 需要在真实目标或硬件上单独验证。

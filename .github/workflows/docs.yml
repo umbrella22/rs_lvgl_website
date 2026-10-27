@@ -1,0 +1,111 @@
+name: Documentation and WebAssembly studio
+
+on:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RSPRESS_BASE: /rs_lvgl_website/
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          # Bindgen formats its output so diagnostics do not repeat entire bindings.
+          components: rustfmt
+          targets: wasm32-unknown-emscripten
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang libclang-dev g++ pkg-config
+      - name: Install pinned Emscripten SDK
+        run: |
+          git clone --depth 1 --branch 6.0.13 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          "$RUNNER_TEMP/emsdk/emsdk" install 6.0.13
+          "$RUNNER_TEMP/emsdk/emsdk" activate 6.0.13
+      - name: Resolve dependencies
+        run: |
+          npm ci
+          cargo fetch --locked --manifest-path wasm/Cargo.toml
+          cargo fetch --locked --manifest-path browser-engine/Cargo.toml
+          cargo generate-lockfile --manifest-path source/Cargo.toml
+          cargo fetch --locked --manifest-path source/Cargo.toml
+      - name: Build and exercise the real WebAssembly module
+        run: |
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          npm run wasm:build
+          npm run check-wasm
+          npm run playground:wasm:build
+          npm run check-interactive
+          cargo test --locked --manifest-path browser-engine/Cargo.toml -- --test-threads=1
+          npm run browser-engine:build
+          npm run browser-engine:check
+      - name: Validate and build both languages
+        run: |
+          npm test
+          npm run typecheck
+          npm run check-docs
+          npm run build
+          npm run check-docs -- --built
+      - name: Preserve the local native playground
+        run: npm run check-playground
+      - name: Upload GitHub Pages site
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: doc_build
+      - name: Keep static site and runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rs-lvgl-documentation
+          path: |
+            doc_build/
+            target/rspress-browser-engine/build.log
+            target/rspress-browser-engine/acceptance/
+            target/rspress-wasm/acceptance/
+            target/rspress-wasm/build.log
+            target/rspress-interactive/acceptance/results.json
+            target/rspress-playground/acceptance/
+          if-no-files-found: warn
+          retention-days: 7
+
+  deploy:
+    name: Deploy GitHub Pages
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    steps:
+      - name: Deploy validated static site
+        id: deployment
+        uses: actions/deploy-pages@v5

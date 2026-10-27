@@ -1,0 +1,181 @@
+---
+title: Run examples
+description: Try layouts in the browser or run Rust examples with display setup and input loops. Find the Cargo features required by each example.
+---
+
+import { NativeExample } from '../../../components/NativeExample';
+import { PlatformTabs, PlatformTab } from '../../../components/PlatformTabs';
+
+# Run examples
+
+Try a layout in the browser, or run a complete program with display setup, input and cleanup. The examples below cover both.
+
+## Try layouts in the browser
+
+Try changing a layout on this page and running it. Examples and supported edits run in your browser and accept input immediately; see the [supported syntax](./browser-playground.mdx). For state connected to controls, start with the [switch example](./input-and-events.mdx).
+
+### Arrange a row
+
+<NativeExample id="row" />
+
+Try changing the row's spacing or replacing `row` with `column`. The child collection still defines the order; the container changes the layout direction.
+
+### Place cells in a grid
+
+<NativeExample id="grid" />
+
+Change a child's `.grid_cell(...)` to move it to another cell. Changing the collection order alone does not override an explicit cell assignment. The [Arrange widgets](./declarative-ui.mdx) explains composition and stable keys; the [playground](../playground.mdx) contains the full preset collection.
+
+## Run a complete application
+
+The workspace ships its runnable examples in the `rs_lvgl_ui` package. Ten focused examples each demonstrate one behavior; their source files are in the repository-level `examples/` directory, and `rs_lvgl_ui/Cargo.toml` attaches each file to an example target with explicit required features. The larger galleries live in `rs_lvgl_ui/examples/`.
+
+### Prepare the desktop environment
+
+Install Rust, a C compiler and libclang as described in [Getting started](./getting-started.mdx), then install SDL2 for the window, mouse and keyboard:
+
+<PlatformTabs>
+<PlatformTab label="macOS">
+
+```sh
+brew install sdl2 pkg-config
+```
+
+If the linker cannot find SDL2, set its library directory:
+
+```sh
+export LIBRARY_PATH="$(pkg-config --variable=libdir sdl2)"
+```
+
+</PlatformTab>
+<PlatformTab label="Debian / Ubuntu">
+
+```sh
+sudo apt-get update
+sudo apt-get install g++ pkg-config libsdl2-dev
+```
+
+</PlatformTab>
+</PlatformTabs>
+
+The component studio includes Lottie, which also needs a C++14 compiler. Xcode Command Line Tools on macOS and `g++` above provide it.
+
+### Get and run the examples
+
+These commands run examples from the repository. To add the library to your own project, use the crates.io installation in [Getting started](./getting-started.mdx).
+
+```sh
+git clone https://github.com/umbrella22/rs_lvgl.git
+cd rs_lvgl
+cargo run -p rs_lvgl_ui --example button_click --features simulator
+```
+
+A button counter window opens; clicking the button increments the count. Run subsequent commands from the repository root, choosing an example name and its required features:
+
+```sh
+cargo run -p rs_lvgl_ui --example <name> --features <features>
+```
+
+`--features` adds capabilities to the crate's default set. The table lists the full `required-features` value declared for each target; the commands below work with defaults enabled. If `--no-default-features` is passed to test a reduced build, every required feature must be provided explicitly.
+
+Open the [component preview](../studio.mdx) for interactive WebAssembly controls and animations. The desktop and browser editions share the same Rust views.
+
+The targets below add display setup, an event loop and teardown. Use these when learning state changes and native input.
+
+## Focused examples
+
+| Example | Required features | Behavior |
+| --- | --- | --- |
+| `app` | `simulator`, `widget-switch` | A notifications switch and a save counter backed by application state |
+| `button_click` | `simulator` | A button sends a message and increments a rendered count |
+| `bar` | `simulator`, `widget-bar` | A progress bar and label share one value; buttons advance or reset it |
+| `arc` | `simulator`, `widget-arc` | An interactive dial; dragging or the Increase button changes the output value |
+| `scale` | `simulator`, `widget-scale`, `widget-slider` | A numbered scale above a slider; Center sets the shared value to 50 |
+| `animation` | `simulator` | A native X animation on a dot, with Pause and Resume messages |
+| `demo` | `simulator`, `widget-bar` | A watch face with day, step count and progress bar |
+| `sdl` | `simulator` | SDL mouse events drive increment and decrement actions |
+| `sdl_demo` | `simulator`, `components`, `widget-slider`, `widget-switch`, `widget-bar` | A Panel composes a volume slider, switch, bar and restore action |
+| `rust_timer` | `simulator`, `rust_timer`, `widget-bar` | A Rust monotonic clock drives LVGL's tick and an elapsed-time display |
+
+For example:
+
+```sh
+cargo run -p rs_lvgl_ui --example sdl_demo --features simulator,components,widget-slider,widget-switch,widget-bar
+cargo run -p rs_lvgl_ui --example rust_timer --features simulator,rust_timer,widget-bar
+```
+
+Each focused example opens a 640 x 480 SDL window titled `rs_lvgl / <name>`. The shared frame shows a small repository label, the example title, a one-line description and a surface card containing the interactive content. The theme is light by default. Close the window to exit; the program prints a frame and node count during teardown.
+
+Three environment variables adjust a run:
+
+- `EXAMPLE_DARK=1` selects the dark theme.
+- `EXAMPLE_FRAMES=100` stops after the given number of frames instead of waiting for the window to close.
+- `EXAMPLE_CAPTURE_DIR=target/captures` writes initial and final PPM snapshots.
+
+```sh
+EXAMPLE_DARK=1 EXAMPLE_FRAMES=100 EXAMPLE_CAPTURE_DIR=target/captures cargo run -p rs_lvgl_ui --example app --features simulator,widget-switch
+```
+
+## Shared host
+
+The ten focused examples share `examples/support/mod.rs`. Its `run` function creates the SDL window and mouse, initializes LVGL, mounts the `App`, and runs the common `timer_handler`, `drain` and `Ui::tick` sequence. Each example keeps its state, `Msg` enum and view in one file. Tests beside each example render the same view on a memory display and dispatch native pointer events, so interaction assertions do not depend on a window server.
+
+[`button_click.rs`](https://github.com/umbrella22/rs_lvgl/blob/main/examples/button_click.rs) is the smallest complete state/message/view cycle; [`sdl_demo.rs`](https://github.com/umbrella22/rs_lvgl/blob/main/examples/sdl_demo.rs) shows the same host with a composite component.
+
+## Galleries
+
+These targets cover the wider component and widget surface. The commands below use the aggregating features where one exists.
+
+| Target | Required features | What it runs |
+| --- | --- | --- |
+| `studio` | `showcase` | The full 1280 x 860 component studio with nine categories, themes, modal dialog and toasts |
+| `capabilities` | `simulator`, `components`, `input-gridnav`, `widget-canvas`, `widget-qrcode`, `widget-barcode`, `widget-gif`, `widget-lottie`, `widget-ime-pinyin`, `widget-textarea`, `font-cjk-16` | Native screen transitions and the optional capability pages |
+| `widgets_demo` | `simulator`, `widget-arc`, `widget-chart`, `widget-checkbox`, `widget-dropdown`, `widget-image`, `widget-keyboard`, `widget-scale`, `widget-slider`, `widget-switch`, `widget-tabview`, `widget-textarea` | A multi-tab widget tour with analytics, shop and keyboard states |
+| `components` | `simulator`, `components`, `widget-switch` | Panels, lists, navigation, dialogs and toasts |
+| `gallery` | `simulator`, `widget-slider`, `widget-switch` | The general component gallery |
+| `input` | `simulator`, `input-keypad` | Keypad input and focus behavior in a native window |
+| `settings` | `widget-slider`, `widget-switch` | A headless memory-display settings screen that prints reconcile counters |
+
+```sh
+cargo run -p rs_lvgl_ui --example studio --features showcase
+cargo run -p rs_lvgl_ui --example capabilities --features capability-gallery
+cargo run -p rs_lvgl_ui --example widgets_demo --features simulator
+cargo run -p rs_lvgl_ui --example components --features simulator
+cargo run -p rs_lvgl_ui --example gallery --features simulator
+cargo run -p rs_lvgl_ui --example input --features simulator,input-keypad
+cargo run -p rs_lvgl_ui --example settings
+```
+
+`studio` opens a window titled `rs_lvgl / Component Studio`. Select a category in the sidebar, drag a slider or toggle a switch. Tab and Shift-Tab move focus; Enter activates a control. `Reset` restores the example state while retaining the category and theme. `Exit studio` closes the window. `showcase` includes the widgets, fonts and media extensions used by the studio.
+
+`capability-gallery` is the aggregate feature set for `capabilities`: it contains every feature that target requires. `settings` does not open a window; it registers a 320 x 240 memory display, mounts the screen, drains four messages and prints created, deleted and moved node counts before unmounting.
+
+![The component studio overview](https://raw.githubusercontent.com/umbrella22/rs_lvgl/main/docs/images/studio-overview.png)
+
+The [component studio guide](https://github.com/umbrella22/rs_lvgl/blob/main/docs/component-studio.md) documents its nine categories and native checks. The focused example sources and their shared host are listed in [examples/README.md](https://github.com/umbrella22/rs_lvgl/blob/main/examples/README.md).
+
+## Run and capture the studio automatically
+
+To visit every category in a bounded run:
+
+```sh
+STUDIO_FRAMES=460 STUDIO_AUTORUN=1 cargo run -p rs_lvgl_ui --example studio --features showcase
+```
+
+Set `STUDIO_CAPTURE_DIR=target/studio-captures` to write PPM snapshots. The studio uses synthetic data and local resources; it needs no network service or application filesystem.
+
+## Check the native runs
+
+```sh
+python3 scripts/check-ui-examples.py --artifacts target/ui-audit
+```
+
+On headless Linux, run it under a virtual display:
+
+```sh
+xvfb-run -a python3 scripts/check-ui-examples.py --artifacts target/ui-audit
+```
+
+The runner builds the examples with `showcase,font-cjk-14,rust_timer`, runs their native tests serially, and executes twenty bounded native scenarios across the focused examples and galleries. Logs and snapshots are written under `target/ui-audit`.
+
+These checks exercise actual views on memory displays and separate SDL smoke runs. SDL smoke proves that a native window can open and close; it does not emulate operating-system input or certify a physical board.

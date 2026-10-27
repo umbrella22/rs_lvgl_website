@@ -1,0 +1,217 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "One target configuration connects C and Rust",
+    "locale": "en",
+    "output": ".archify/dataflow-build-path-en-20261026-175054/build-path.html",
+    "quality_profile": "showcase"
+  },
+  "stages": [
+    {
+      "label": "Build inputs"
+    },
+    {
+      "label": "Target build"
+    },
+    {
+      "label": "Outputs"
+    },
+    {
+      "label": "Rust wrappers"
+    },
+    {
+      "label": "Application"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "config",
+      "label": "Target config",
+      "sublabel": "lv_conf.h + defines",
+      "type": "backend",
+      "stage": 0,
+      "row": 0
+    },
+    {
+      "id": "sources",
+      "label": "LVGL + shims",
+      "sublabel": "Optional app C / fonts",
+      "type": "database",
+      "stage": 0,
+      "row": 3
+    },
+    {
+      "id": "bindgen",
+      "label": "bindgen",
+      "sublabel": "Target headers + macros",
+      "type": "backend",
+      "stage": 1,
+      "row": 0
+    },
+    {
+      "id": "compile",
+      "label": "cc / C++",
+      "sublabel": "Compile native capabilities",
+      "type": "backend",
+      "stage": 1,
+      "row": 3
+    },
+    {
+      "id": "bindings",
+      "label": "bindings.rs",
+      "sublabel": "OUT_DIR",
+      "type": "database",
+      "stage": 2,
+      "row": 0
+    },
+    {
+      "id": "metadata",
+      "label": "Capabilities",
+      "sublabel": "DEP_LVGL_*",
+      "type": "backend",
+      "stage": 2,
+      "row": 2
+    },
+    {
+      "id": "library",
+      "label": "Native library",
+      "sublabel": "LVGL objects",
+      "type": "database",
+      "stage": 2,
+      "row": 4
+    },
+    {
+      "id": "codegen",
+      "label": "rs_lvgl_codegen",
+      "sublabel": "rs_lvgl/build.rs",
+      "type": "backend",
+      "stage": 3,
+      "row": 0
+    },
+    {
+      "id": "api",
+      "label": "rs_lvgl",
+      "sublabel": "Generated + handwritten API",
+      "type": "backend",
+      "stage": 4,
+      "row": 0
+    },
+    {
+      "id": "app",
+      "label": "Rust App",
+      "sublabel": "Direct calls or declarative UI",
+      "type": "frontend",
+      "stage": 4,
+      "row": 3
+    }
+  ],
+  "flows": [
+    {
+      "id": "config-bindgen",
+      "from": "config",
+      "to": "bindgen",
+      "label": "target config",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "config-compile",
+      "from": "config",
+      "to": "compile",
+      "label": "same config",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "source-compile",
+      "from": "sources",
+      "to": "compile",
+      "label": "C sources",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "emit-bindings",
+      "from": "bindgen",
+      "to": "bindings",
+      "label": "Rust FFI",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "emit-caps",
+      "from": "bindgen",
+      "to": "metadata",
+      "label": "effective macros",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "native-library",
+      "from": "compile",
+      "to": "library",
+      "label": "target objects",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "read-bindings",
+      "from": "bindings",
+      "to": "codegen",
+      "label": "BINDINGS",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "read-caps",
+      "from": "metadata",
+      "to": "codegen",
+      "label": "WIDGETS / cfg",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "emit-wrappers",
+      "from": "codegen",
+      "to": "api",
+      "label": "generated.rs",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "use-api",
+      "from": "api",
+      "to": "app",
+      "label": "typed API",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "link-native",
+      "from": "library",
+      "to": "app",
+      "label": "link",
+      "fromSide": "right",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Configuration ownership",
+      "items": [
+        "The default build derives configuration from Cargo features. An LVGL_CONFIG_PATH header is included unchanged and validated.",
+        "C compilation and bindgen must agree on target configuration; Rust visibility alone is insufficient."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Use the linked provider",
+      "items": [
+        "rs_lvgl/build.rs reads DEP_LVGL_BINDINGS and capability metadata before writing generated.rs.",
+        "Only missing BINDINGS metadata selects the build-dependency bindings. The platform still supplies display, input and timing."
+      ]
+    }
+  ]
+}

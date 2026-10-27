@@ -1,0 +1,97 @@
+---
+title: 在浏览器中试写
+description: 无需本地服务，修改 Rust UI 示例并操作真实 LVGL 控件。了解浏览器支持的语法、错误提示，以及何时使用本地编译器。
+---
+
+# 在浏览器中试写
+
+打开[演练场](../playground.mdx)，把开关示例的 `Notifications` 改成自己的标题，点击**运行**。再切换右侧开关，状态文字和计数会随之更新。这个过程不需要安装 Rust，也不需要启动编译服务。
+
+页面使用预先构建的 WebAssembly 引擎解析和解释 Rust UI 代码，再由 `rs_lvgl_ui` 和 LVGL 创建、绘制控件。布局、点击和消息处理都在浏览器的 Worker 内完成，编辑的源码不会上传。
+
+## 可以修改什么
+
+文档中的七个示例都可以直接修改。先从文字、间距、尺寸开始，再调整 `App` 的状态和 `update` 中的消息处理。
+
+| 内容 | 浏览器支持范围 |
+| --- | --- |
+| 应用 | 一个 `impl App`，包含 `type Msg`、`update` 和 `view`；`fn app() -> impl App` 返回初始状态 |
+| 数据 | 具名字段结构体、单元结构体、单元或元组消息变体；布尔值、整数、字符串、数组与元组 |
+| 表达式 | `let`、普通辅助函数、闭包、`if`、无守卫的 `match`、数组索引、标量比较与算术、赋值 |
+| 列表 | 数组的 `.into_iter().map(...)`；命名子视图；`.child(...)` 与 `.children(...)` |
+| 文本 | `format!("{}", value)`、`format!("{name}")`、`.to_string()`；不支持格式说明符 |
+| 布局 | `obj`、`row`、`column`、`grid`；`Size`、`GridTrack`、`grid_cell` 和稳定的 `Key` |
+| 控件 | `label`、`button`、`switch`、`slider`、`bar`、`arc`、`checkbox`、`textarea`、`dropdown`、`roller`、`spinbox`、`spinner`、`led` |
+| 输入 | `on_click`、`on_long_press`、`on_value_changed`、`on_text_changed`；输入框支持 `placeholder`、`password`、`multiline`、`keyboard_id` |
+| 样式 | `Style` 的六个主题预设、`default`、`neutral`；边距、间距、尺寸与最小/最大尺寸、颜色、边框、圆角、透明度、对齐、偏移、隐藏和禁用 |
+
+使用 `use rs_lvgl_ui::prelude::*;` 导入，并沿用示例中的函数调用方式。颜色可写为 `Color::rgb(240, 120, 60)`。整数支持 `i8` 到 `i64`、`u8` 到 `u64`，`isize` 和 `usize` 按 32 位处理。数值超出字段类型或 UI 参数范围时会报错，不会自动截断。
+
+例如，把滑块的值保存在状态中，事件到来时再写回：
+
+```rust
+use rs_lvgl_ui::prelude::*;
+
+struct Brightness {
+    level: i32,
+}
+
+#[derive(Clone)]
+enum Message {
+    Level(i32),
+}
+
+impl App for Brightness {
+    type Msg = Message;
+
+    fn update(&mut self, message: Message) {
+        match message {
+            Message::Level(value) => {
+                self.level = value;
+            }
+        }
+    }
+
+    fn view(&self, theme: &Theme) -> View<Message> {
+        column([
+            label(format!("Brightness: {}", self.level)),
+            slider(0, 100, self.level)
+                .on_value_changed(|value| Message::Level(value))
+                .style(Style::default().width(Size::Px(240))),
+        ])
+        .style(Style::screen(theme).pad(32).gap(24))
+    }
+}
+
+fn app() -> impl App {
+    Brightness { level: 40 }
+}
+```
+
+将完整代码复制进演练场，拖动滑块即可看到数字变化。`view` 描述当前画面，`update` 修改状态；这与在设备应用中编写组件的方式一致。
+
+## 出错时
+
+错误下方会显示源码行号，点击可回到编辑位置。语法错误、不支持的调用、数值越界和运行限制会分别提示。LVGL 视图校验失败时，位置指向 `view`，具体原因见错误正文。
+
+修改没有成功运行时，右侧保留上次成功的画面。修复后再次运行即可；**重置**恢复示例源码，**重启预览**重新运行当前预览的初始状态。每次成功运行都会重新创建应用，不会沿用上一次点击产生的状态。
+
+浏览器引擎不执行 `rustc`，也不做完整类型推导、所有权或借用检查。它对支持的数据和 UI 参数进行运行时检查，但浏览器里能运行的代码仍需在应用工程中通过 Cargo 编译。未执行分支中的范围外语法也会被拒绝。
+
+为避免页面被阻塞，每次运行限制为 32 KiB 源码、64 层源码嵌套、32 层函数调用和 96 层求值嵌套；每次视图求值或消息更新最多执行 20,000 步。单个集合最多 512 项、单次视图最多 512 个节点、单个值最多 4096 项、文本最多 16 KiB，每次运行最多使用 4096 个不同的键。超出限制会报错；无响应的 Worker 会在 5 秒后终止。
+
+## 需要完整 Rust 时
+
+外部 crate、其他 trait 实现、循环、异步代码、指针与 `unsafe`、自定义宏，以及表中未列出的组件能力，需要本地编译器。浏览器不会自动切换模式。
+
+先按[快速开始](./getting-started.mdx)准备 Rust、C 编译器和 libclang，再用 `--recurse-submodules` 克隆 [rs_lvgl_website](https://github.com/umbrella22/rs_lvgl_website)。[网站 README](https://github.com/umbrella22/rs_lvgl_website#build-from-a-clean-checkout) 列出了依赖准备命令。本地演练场还需要 Node.js 和 npm（已验证 Node.js 24），以及 Emscripten（已验证 6.0.13）。macOS 可运行 `brew install emscripten`；Linux 使用[官方 emsdk](https://emscripten.org/docs/getting_started/downloads.html)。确认 `emcc`、`em++`、`embuilder` 和 `em-config` 位于 PATH，然后在网站根目录运行：
+
+```sh
+rustup target add wasm32-unknown-emscripten
+npm ci
+npm run playground
+```
+
+打开终端打印的地址，默认是 `http://127.0.0.1:4173/rs_lvgl_website/`。在演练场右上角打开**运行设置**，将**运行方式**切换为**本地 Rust 编译器**。修改代码并点击**运行**，预览中会显示重新编译的应用，并继续接收输入。也可以调整显示尺寸、主题，或开启自动运行。
+
+成功运行会重新创建应用状态；编译失败会显示源码位置，并保留上次成功的预览。服务只监听本机回环地址，不上传源码，使用当前账户的权限编译和运行代码，请只运行可信代码。浏览器模式支持的修改不需要这套工具链。
