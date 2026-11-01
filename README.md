@@ -200,6 +200,13 @@ terminates its worker, including blocked user code. Keyboard input is active onl
 while the canvas is focused; Esc exits it. Pinyin uses LVGL's on-screen keyboard;
 OS IME composition is not bridged.
 
+Playground animation, display refresh and input timers are serviced by the
+browser's animation frames. The preview runtime uses a 1 ms eligibility period
+for those native timers so LVGL's default 33 ms interval does not cap a 60 Hz or
+120 Hz browser preview. No additional timer loop is started, and unchanged pixels
+are not transferred. This setting belongs to the website consumer; embedded
+library defaults are unchanged.
+
 The service binds only to `127.0.0.1`, checks Host and Origin, and requires a session
 token. Trusted local Rust compilation runs with the current account's privileges.
 A Worker isolates runtime execution; it does not sandbox compiler macros or build

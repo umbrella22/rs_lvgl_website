@@ -6,6 +6,7 @@ import { engineRoot, verifyEngineAssets } from "./browser-engine-assets.mjs";
 import { verifyPlaygroundAssets } from "./playground-assets.mjs";
 import { playgroundApps } from "./playground-apps.mjs";
 import { repositoryRoot, websiteRoot, sha256, encodePng } from "./playground-native.mjs";
+import { animatedPreviewSource, checkPreviewCadence } from "./preview-cadence.mjs";
 
 const index = process.argv.indexOf("--passes");
 const passes = index < 0 ? 1 : Number(process.argv[index + 1]);
@@ -62,6 +63,18 @@ for (let pass = 1; pass <= passes; pass++) {
     app._studio_destroy(); reference._studio_destroy();
   }
   passed("seven interpreted presets and stateful switch match compiled LVGL pixels");
+  const cadence = [];
+  for (const hz of [60, 120]) {
+    const animation = await instance(animatedPreviewSource);
+    try { cadence.push(checkPreviewCadence(animation, hz)); }
+    finally { animation._studio_destroy(); }
+  }
+  const still = await instance(screen('label("Static preview")'));
+  const generation = still._studio_state(7);
+  advance(still, 120);
+  assert.equal(still._studio_state(7), generation, "idle preview must not redraw unchanged pixels");
+  still._studio_destroy();
+  passed("60/120 Hz browser animation cadence and idle redraw suppression");
   const app = await instance();
   const original = sha256(pixels(app));
   click(app, 70, 112); const changed = sha256(pixels(app)); assert.notEqual(changed, original);
@@ -119,6 +132,6 @@ for (let pass = 1; pass <= passes; pass++) {
   assert.ok(sliderApp._studio_state(2)>0); assert.notEqual(sha256(pixels(sliderApp)),sliderBefore); sliderApp._studio_destroy();
   passed("edited slider delivers typed values and redraws its state label");
   assert.equal((await verifyEngineAssets()).sourceDigest,manifest.sourceDigest);
-  results.push({pass,time:new Date().toISOString(),sourceDigest:manifest.sourceDigest,cases});
+  results.push({pass,time:new Date().toISOString(),sourceDigest:manifest.sourceDigest,cases,cadence});
   await fs.writeFile(path.join(directory,"results.json"),JSON.stringify(results,null,2)+"\n");
 }

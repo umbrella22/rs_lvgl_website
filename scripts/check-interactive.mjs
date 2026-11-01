@@ -6,6 +6,7 @@ import { WasmCompiler } from "./playground-wasm.mjs";
 import { playgroundApps } from "./playground-apps.mjs";
 import { verifyPlaygroundAssets, appInputs, playgroundWasmRoot } from "./playground-assets.mjs";
 import { repositoryRoot, websiteRoot, encodePng, sha256, runProcess } from "./playground-native.mjs";
+import { animatedPreviewSource, checkPreviewCadence } from "./preview-cadence.mjs";
 
 const args = process.argv.slice(2);
 const index = args.indexOf("--passes");
@@ -52,6 +53,19 @@ try {
     }
     assert.equal(new Set(hashes).size, apps.length);
     passed("seven source-matched presets render distinct native views");
+    const animated = await compiler.compile({ source: animatedPreviewSource });
+    assert.equal(animated.ok, true, JSON.stringify(animated));
+    const animation = await instance(animated);
+    const cadence = [];
+    try {
+      for (const hz of [60, 120]) {
+        assert.equal(animation._studio_init(640, 400, 0), 0);
+        advance(animation);
+        cadence.push(checkPreviewCadence(animation, hz));
+        animation._studio_destroy();
+      }
+    } finally { animation._studio_destroy(); }
+    passed("compiled animation follows 60/120 Hz frames after initialization and restart");
     const source = apps[0].source;
     const built = await compiler.compile({ source });
     assert.equal(built.ok, true, JSON.stringify(built));
@@ -135,7 +149,7 @@ try {
     assert.equal(await fs.readFile(marker, "utf8"), "wasm initialized");
     passed("blocking user view is contained in a terminable execution context");
     assert.equal((await appInputs()).digest, manifest.sourceDigest);
-    results.push({ pass, time: new Date().toISOString(), cases, sourceDigest: manifest.sourceDigest });
+    results.push({ pass, time: new Date().toISOString(), cases, cadence, sourceDigest: manifest.sourceDigest });
     await fs.writeFile(path.join(directory, "results.json"), JSON.stringify(results, null, 2) + "\n");
   }
 } finally { await compiler.close(); }

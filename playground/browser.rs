@@ -96,9 +96,19 @@ impl<A: PreviewApp> BrowserApp<A> {
         );
         let ui = state.ui.as_mut().unwrap();
         ui.mount(&state.app).map_err(|e| format!("mount:{e}"))?;
-        // SAFETY: callbacks borrow this stable Input box synchronously. Devices
-        // are removed before the box/display, including partial initialization.
+        // SAFETY: the display and animation timers belong to this initialized
+        // LVGL instance. Callbacks borrow this stable Input box synchronously.
+        // Devices are removed before the box/display, including partial init.
         unsafe {
+            // requestAnimationFrame already paces the Worker. Let each browser
+            // frame service native animation, refresh and input instead of
+            // applying LVGL's additional 33 ms default interval. A 1 ms period
+            // also follows displays faster than 60 Hz; it starts no extra loop.
+            rs_lvgl_sys::lv_timer_set_period(
+                rs_lvgl_sys::lv_display_get_refr_timer(rs_lvgl_sys::lv_display_get_default()),
+                1,
+            );
+            rs_lvgl_sys::lv_timer_set_period(rs_lvgl_sys::lv_anim_get_timer(), 1);
             let data = (&mut *state.input as *mut Input).cast();
             let mouse =
                 NonNull::new(rs_lvgl_sys::lv_indev_create()).ok_or("pointer allocation failed")?;
@@ -109,6 +119,7 @@ impl<A: PreviewApp> BrowserApp<A> {
             );
             rs_lvgl_sys::lv_indev_set_user_data(mouse.as_ptr(), data);
             rs_lvgl_sys::lv_indev_set_read_cb(mouse.as_ptr(), Some(read_pointer));
+            rs_lvgl_sys::lv_timer_set_period(rs_lvgl_sys::lv_indev_get_read_timer(mouse.as_ptr()), 1);
             let keyboard =
                 NonNull::new(rs_lvgl_sys::lv_indev_create()).ok_or("keyboard allocation failed")?;
             state.keyboard = Some(keyboard);
@@ -118,6 +129,7 @@ impl<A: PreviewApp> BrowserApp<A> {
             );
             rs_lvgl_sys::lv_indev_set_user_data(keyboard.as_ptr(), data);
             rs_lvgl_sys::lv_indev_set_read_cb(keyboard.as_ptr(), Some(read_key));
+            rs_lvgl_sys::lv_timer_set_period(rs_lvgl_sys::lv_indev_get_read_timer(keyboard.as_ptr()), 1);
             ui.bind_input(keyboard).map_err(|e| format!("input:{e}"))?;
         }
         Ok(state)
