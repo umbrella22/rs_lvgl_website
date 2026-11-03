@@ -43,6 +43,11 @@
   },
   {
     "type": "file",
+    "name": "embedscope",
+    "label": "Debug with EmbedScope"
+  },
+  {
+    "type": "file",
     "name": "features",
     "label": "Widgets and fonts"
   },

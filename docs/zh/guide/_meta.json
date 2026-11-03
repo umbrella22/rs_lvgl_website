@@ -43,6 +43,11 @@
   },
   {
     "type": "file",
+    "name": "embedscope",
+    "label": "使用 EmbedScope 调试"
+  },
+  {
+    "type": "file",
     "name": "features",
     "label": "选择控件与字体"
   },
