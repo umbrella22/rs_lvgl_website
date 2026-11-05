@@ -72,9 +72,9 @@ impl App for Counter {
 }
 ```
 
-The snippet covers the `App` implementation only. The view is pure: `Counter` is borrowed immutably and every button sends a message instead of changing state. `Style::screen` fills the display, the row uses a themed surface, the value label grows into the free space, and the `+1` button uses the flat accent preset. A runnable program with the same structure, including display registration, drain calls and teardown, is [rs_lvgl_ui/examples/settings.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/settings.rs).
+The snippet covers the `App` implementation only. The view is pure: `Counter` is borrowed immutably and every button sends a message instead of changing state. `Style::screen` fills the display, the row uses a themed surface, the value label grows into the free space, and the `+1` button uses the flat accent preset. A runnable program with the same structure, including display registration, drain calls and teardown, is [rs_lvgl_ui/examples/settings.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_ui/examples/settings.rs).
 
-Advanced applications can override `App::update_with_render` and return `RenderDecision::Keep` to handle an action without immediately rebuilding the view. The default calls `update` and returns `Reconcile`. Any action requesting reconciliation, the initial mount, a theme change or a dirty flag still requires an update.
+Advanced applications can override `App::update_with_render` and return `RenderDecision::Skip` when neither the view nor the overlay needs updating and no controlled native value needs correction. An unchanged model alone does not establish this condition. The default calls `update` and returns `Reconcile`. Any action requesting reconciliation, the initial mount, a theme change or a dirty flag still requires an update.
 
 ## Mount on a display and drive updates
 
@@ -134,7 +134,7 @@ ui.unmount();
 drop(ui);
 ```
 
-[settings.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/settings.rs) runs this sequence before it deletes its memory display; [components.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/components.rs) ends the SDL application through `deinit`. Display registration and lifetime are covered in [Native integration](./native-integration.mdx).
+[settings.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_ui/examples/settings.rs) runs this sequence before it deletes its memory display; [components.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_ui/examples/components.rs) ends the SDL application through `deinit`. Display registration and lifetime are covered in [Native integration](./native-integration.mdx).
 
 Calling `Ui::unmount` keeps the order explicit: the view, overlay and focus group are removed while the display is known to be alive. Dropping a mounted `Ui` also deletes its root and focus group, but the drop then depends on surrounding scope order, which may place display deletion first; keep the explicit `unmount` when controlling teardown. An unmounted `Ui` holds no native state, so it can be dropped afterwards. A later `mount` creates a fresh root, and input devices must be bound again. A mounted `Ui` must not outlive the native display, because its destructor calls into LVGL.
 
@@ -149,7 +149,7 @@ Dropping a `Display` handle does not delete the native display. The handle is an
 
 ## Runnable example
 
-[settings.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/settings.rs) is a complete host example with the same structure: it registers an off-screen 320 x 240 memory display, creates a `Ui`, mounts a settings screen, posts four messages, drains them, prints the mounted node and reconcile counters, asserts the resulting state, then unmounts and deletes the display. It uses no raw pointers and no `rs_lvgl_sys` calls.
+[settings.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_ui/examples/settings.rs) is a complete host example with the same structure: it registers an off-screen 320 x 240 memory display, creates a `Ui`, mounts a settings screen, posts four messages, drains them, prints the mounted node and reconcile counters, asserts the resulting state, then unmounts and deletes the display. It uses no raw pointers and no `rs_lvgl_sys` calls.
 
 ```sh
 cargo run -p rs_lvgl_ui --example settings

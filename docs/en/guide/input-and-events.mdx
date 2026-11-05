@@ -12,6 +12,8 @@ import { GuideLinks } from '../../../components/GuideLinks';
 
 When a switch changes, its status label should change too. Convert the input into a message, store the new value in `App::update`, and read it back in `view`.
 
+The [composition and forms guide](./composition.md) covers lazy children, semantic callbacks, slots and typed bindings in 0.5.0.
+
 ## Try the notification switch
 
 Click the switch: `Disabled` becomes `Enabled`, and the count increases. Select `Reset` to restore both values. The complete application is on the left.
@@ -56,7 +58,7 @@ ui.timer_handler(); // dispatch native timers and input callbacks
 let stats = ui.drain(&mut app, 32)?;
 ```
 
-The snippet is a frame-loop fragment; the [input example](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/input.rs) supplies the display, keypad and loop.
+The snippet is a frame-loop fragment; the [input example](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_ui/examples/input.rs) supplies the display, keypad and loop.
 
 `drain(&mut app, max_messages)` processes at most the requested number of messages, calls `App::update` once per message, then calls `App::view` and reconciles once for the whole batch. It returns `DrainStats`:
 
@@ -146,7 +148,7 @@ The queue and boxed handlers allocate. `rs_lvgl_ui` is `no_std` outside tests an
 
 ## Runnable example
 
-[input.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/input.rs) creates an SDL window, mouse and keyboard, mounts two buttons and a scrollable column, binds the keyboard to the UI, focuses `Key::Named("add")`, and drains pointer clicks, key codes and scroll offsets in its frame loop.
+[input.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_ui/examples/input.rs) creates an SDL window, mouse and keyboard, mounts two buttons and a scrollable column, binds the keyboard to the UI, focuses `Key::Named("add")`, and drains pointer clicks, key codes and scroll offsets in its frame loop.
 
 ```sh
 cargo run -p rs_lvgl_ui --example input --features simulator,input-keypad

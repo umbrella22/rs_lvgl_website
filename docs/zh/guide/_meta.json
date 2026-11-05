@@ -74,5 +74,10 @@
     "type": "file",
     "name": "development",
     "label": "参与开发"
+  },
+  {
+    "type": "file",
+    "name": "composition",
+    "label": "组合与受控表单"
   }
 ]

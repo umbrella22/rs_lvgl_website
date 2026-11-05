@@ -88,7 +88,7 @@ let display = rs_lvgl::Display::register::<_, { 320 * 240 }>(320, 240, |refresh|
 ## 选择 LVGL 配置
 
 没有应用输入时，构建读取
-[`vendor/include-9.6/lv_conf.h`](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_sys/vendor/include-9.6/lv_conf.h)，
+[`vendor/include-9.6/lv_conf.h`](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_sys/vendor/include-9.6/lv_conf.h)，
 并在 Cargo feature 改变选择时把补丁副本写入 `OUT_DIR/conf`。仓库中的头文件
 不会被改写。默认头文件使用 CLIB 分配器，关闭 SDL 和日志，启用核心控件集以及
 Montserrat 12、14、16、28、48。可选媒体和输入扩展（QR、条码、GIF、Lottie、

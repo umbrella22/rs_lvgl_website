@@ -250,12 +250,14 @@ export class NativeRenderer {
     artifactRoot = path.join(repositoryRoot, "target/rspress-playground"),
     compileTimeout = 120_000,
     runTimeout = 5_000,
+    librarySource = libraryRoot,
   } = {}) {
     this.name = `lvgl-preview-${randomUUID()}`;
     this.directory = path.join(artifactRoot, "sessions", this.name);
     this.target = path.join(artifactRoot, "build");
     this.compileTimeout = compileTimeout;
     this.runTimeout = runTimeout;
+    this.librarySource = path.resolve(librarySource);
     this.pending = Promise.resolve();
     this.sequence = 0;
   }
@@ -263,7 +265,9 @@ export class NativeRenderer {
   async prepare(signal) {
     if (this.prepared) return;
     await fs.mkdir(path.join(this.directory, "src"), { recursive: true });
-    const manifest = `[package]\nname = "${this.name}"\nversion = "0.0.0"\nedition = "2021"\n\n[workspace]\n\n[dependencies]\nrs_lvgl = { path = ${JSON.stringify(path.join(libraryRoot, "rs_lvgl"))}, default-features = false, features = ["alloc"] }\nrs_lvgl_ui = { path = ${JSON.stringify(path.join(libraryRoot, "rs_lvgl_ui"))} }\n`;
+    for (const crate of ["rs_lvgl", "rs_lvgl_ui"])
+      await fs.access(path.join(this.librarySource, crate, "Cargo.toml"));
+    const manifest = `[package]\nname = "${this.name}"\nversion = "0.0.0"\nedition = "2021"\n\n[workspace]\n\n[dependencies]\nrs_lvgl = { path = ${JSON.stringify(path.join(this.librarySource, "rs_lvgl"))}, default-features = false, features = ["alloc"] }\nrs_lvgl_ui = { path = ${JSON.stringify(path.join(this.librarySource, "rs_lvgl_ui"))} }\n`;
     await fs.writeFile(path.join(this.directory, "Cargo.toml"), manifest);
     await fs.copyFile(
       path.join(websiteRoot, "playground/runner.rs"),

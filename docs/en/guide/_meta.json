@@ -74,5 +74,10 @@
     "type": "file",
     "name": "development",
     "label": "Contribute"
+  },
+  {
+    "type": "file",
+    "name": "composition",
+    "label": "Composition and forms"
   }
 ]

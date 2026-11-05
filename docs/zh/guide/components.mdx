@@ -10,6 +10,8 @@ import { GuideLinks } from '../../../components/GuideLinks';
 
 多个页面使用同样的标题、列表行或按钮组时，可以把它们提取成返回 `View<M>` 的函数。内置的 `components` 模块也用这种方式组合控件，提供列表、导航和覆盖层。
 
+0.5.0 的条件组合、语义回调、插槽和 typed 绑定见[组合与受控表单](./composition.md)。
+
 ## 从可复用的视图函数开始
 
 组件可以从一个返回 `View<M>` 的普通 Rust 函数开始。提取标题后，字体与间距便有了统一定义；返回的视图放在哪里，仍由父节点决定。
@@ -62,7 +64,7 @@ import { GuideLinks } from '../../../components/GuideLinks';
 
 ## 设置界面
 
-下面是一个设置界面的 `App` 部分，使用导航、列表、面板、确认对话框和提示条。完整宿主程序见 [rs_lvgl_ui/examples/components.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/components.rs)。
+下面是一个设置界面的 `App` 部分，使用导航、列表、面板、确认对话框和提示条。完整宿主程序见 [rs_lvgl_ui/examples/components.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_ui/examples/components.rs)。
 
 <details>
 <summary>查看完整的设置页 App</summary>
@@ -226,7 +228,7 @@ impl App for Settings {
 
 ## 可运行示例
 
-[components.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/components.rs) 在同一个应用中使用导航、列表行、面板、重置对话框与成功提示条，并演示只在队列非空时投递 tick 消息来推进提示条。
+[components.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_ui/examples/components.rs) 在同一个应用中使用导航、列表行、面板、重置对话框与成功提示条，并演示只在队列非空时投递 tick 消息来推进提示条。
 
 ```sh
 cargo run -p rs_lvgl_ui --example components --features simulator

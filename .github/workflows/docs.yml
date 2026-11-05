@@ -70,6 +70,8 @@ jobs:
           npm run check-docs -- --built
       - name: Preserve the local native playground
         run: npm run check-playground
+      - name: Verify composition and form drawing bounds
+        run: npm run check-development-ui -- --source ./source
       - name: Upload GitHub Pages site
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v5
@@ -88,6 +90,8 @@ jobs:
             target/rspress-wasm/build.log
             target/rspress-interactive/acceptance/results.json
             target/rspress-playground/acceptance/
+            target/development-ui/results.json
+            target/development-ui/forms-*.png
           if-no-files-found: warn
           retention-days: 7
 

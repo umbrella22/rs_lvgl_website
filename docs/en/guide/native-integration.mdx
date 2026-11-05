@@ -97,7 +97,7 @@ clean up while an alias remains.
 ## Choose the LVGL configuration
 
 Without application inputs, the build reads
-[`vendor/include-9.6/lv_conf.h`](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_sys/vendor/include-9.6/lv_conf.h)
+[`vendor/include-9.6/lv_conf.h`](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_sys/vendor/include-9.6/lv_conf.h)
 and writes a patched copy under `OUT_DIR/conf` when Cargo features change the
 selection. The checked-in header is never rewritten. The default header uses the
 CLIB allocator, leaves SDL and logging off, and enables the core widget set with

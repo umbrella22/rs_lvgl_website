@@ -16,7 +16,7 @@ The workspace contains four crates with one shared dependency resolution:
 | `rs_lvgl_sys` | Compiles vendored LVGL 9.6 and shims, generates raw bindgen bindings, exposes configuration inputs | `build.rs`, `src/lib.rs`, `shims/`, `vendor/` |
 | `rs_lvgl_codegen` | Parses bindgen output and generates Rust widget wrappers at build time | `src/lib.rs`, `src/analysis.rs` |
 | `rs_lvgl` | Public wrappers for widgets, displays, input, styles, memory and timers | `build.rs`, `src/lib.rs`, `src/widgets/` |
-| `rs_lvgl_ui` | Declarative `App`/`View`/`Ui`, components, features and the native examples | `src/lib.rs`, `src/node.rs`, `examples/` |
+| `rs_lvgl_ui` | Declarative `App`/`View`/`Ui`, components, features and the native examples | `src/lib.rs`, `src/node/mod.rs`, `examples/` |
 
 `Cargo.toml` defines the library workspace; `.cargo/config.toml` defines the Xtensa target settings and the `cargo test-lvgl` alias. The Rspress site is maintained in [rs_lvgl_website](https://github.com/umbrella22/rs_lvgl_website), with the library fixed by its `source/` submodule. The library commands in this guide run from the library checkout; the site commands below run from the website checkout.
 
@@ -164,8 +164,14 @@ python3 scripts/install-skills.py --dest ~/.agents/skills
 python3 scripts/install-skills.py --dest ../application/.agents/skills --skill rs-lvgl-ui
 ```
 
-The installer refuses to overwrite an existing skill folder. CI validates the packaged skills with `scripts/check-skills.py`; see [AI development skills](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/docs/ai-skills.md) for discovery and maintenance details.
+The installer refuses to overwrite an existing skill folder. CI validates the packaged skills with `scripts/check-skills.py`; see [AI development skills](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/docs/ai-skills.md) for discovery and maintenance details.
 
 ## Host testing and target limits
 
 Host builds and tests compile and run the vendored LVGL on the development machine, using the host toolchain, the generated bindings and in-memory displays. They do not validate a cross-compilation toolchain, ESP-IDF integration, rendering on a physical panel, DMA/GPU completion during teardown, or ABI compatibility with an external LVGL provider. The Xtensa runner in `.cargo/config.toml` invokes `espflash flash --monitor`, so a cross-target `cargo run` or test writes to attached hardware. A local run does not reproduce the CI environment.
+
+## Composition and native checks
+
+The [composition and forms guide](./composition.md) covers the 0.5.0 lazy children, semantic events, typed construction, slots and bindings. Validate the pinned library with `npm run check-development-ui -- --source ./source`; use `--source ../lv_binding_rust` for a local library checkout. Normal builds and browser runtimes use the pinned `source/`.
+
+The sys build publishes `DEP_LVGL_LAYOUTS` from effective target macros, and handwritten wrappers follow Flex/Grid availability independently. Run `python3 scripts/check-layout-config.py --locked` from the library root for the four-configuration consumer matrix. The declarative UI requires its supported layouts.

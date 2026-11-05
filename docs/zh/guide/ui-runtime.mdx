@@ -72,9 +72,9 @@ impl App for Counter {
 }
 ```
 
-片段只包含 `App` 实现。视图保持纯粹：`Counter` 以不可变借用传入，每个按钮只发送消息，不直接修改状态。`Style::screen` 铺满显示区域，行使用主题表面，数值标签占据剩余空间，`+1` 按钮使用扁平强调色预设。包含显示注册、`drain` 调用与清理步骤的完整程序见 [rs_lvgl_ui/examples/settings.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/settings.rs)。
+片段只包含 `App` 实现。视图保持纯粹：`Counter` 以不可变借用传入，每个按钮只发送消息，不直接修改状态。`Style::screen` 铺满显示区域，行使用主题表面，数值标签占据剩余空间，`+1` 按钮使用扁平强调色预设。包含显示注册、`drain` 调用与清理步骤的完整程序见 [rs_lvgl_ui/examples/settings.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_ui/examples/settings.rs)。
 
-高级应用可以覆盖 `App::update_with_render` 返回 `RenderDecision::Keep`，处理操作而不立即重建视图。默认实现调用 `update` 并返回 `Reconcile`；批次中任一操作请求协调，或首帧、主题变化、脏标记要求更新时，仍会协调。
+高级应用可以覆盖 `App::update_with_render` 返回 `RenderDecision::Skip`，前提是视图和覆盖层都不需要更新，也不需要纠正受控原生值。模型没有变化本身不足以满足这一条件。默认实现调用 `update` 并返回 `Reconcile`；批次中任一操作请求协调，或首帧、主题变化、脏标记要求更新时，仍会协调。
 
 ## 挂载到显示并驱动更新
 
@@ -134,7 +134,7 @@ ui.unmount();
 drop(ui);
 ```
 
-[settings.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/settings.rs) 在删除内存显示前执行这一顺序；[components.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/components.rs) 通过 `deinit` 结束 SDL 应用。显示注册与生命周期见[接入设备](./native-integration.mdx)。
+[settings.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_ui/examples/settings.rs) 在删除内存显示前执行这一顺序；[components.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_ui/examples/components.rs) 通过 `deinit` 结束 SDL 应用。显示注册与生命周期见[接入设备](./native-integration.mdx)。
 
 调用 `Ui::unmount` 能让清理顺序保持明确：在显示确定存活时移除视图、覆盖层和焦点组。丢弃已挂载的 `Ui` 也会删除根节点和焦点组，但这取决于外层作用域的析构顺序，显示删除可能先发生；需要控制清理顺序时应显式调用 `unmount`。已卸载的 `Ui` 不再持有原生状态，之后可以随时丢弃。再次 `mount` 会创建新的根节点，输入设备需要重新绑定。已挂载的 `Ui` 不得比原生显示存活更久：它的析构会调用 LVGL。
 
@@ -149,7 +149,7 @@ drop(ui);
 
 ## 可运行示例
 
-[settings.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/settings.rs) 是结构相同的完整宿主示例：它注册一个 320 x 240 的离屏内存显示，创建 `Ui`，挂载设置界面，投递四条消息并排空，打印已挂载节点数与协调计数，断言最终状态，然后卸载并删除显示。示例不包含裸指针，也不调用 `rs_lvgl_sys`。
+[settings.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_ui/examples/settings.rs) 是结构相同的完整宿主示例：它注册一个 320 x 240 的离屏内存显示，创建 `Ui`，挂载设置界面，投递四条消息并排空，打印已挂载节点数与协调计数，断言最终状态，然后卸载并删除显示。示例不包含裸指针，也不调用 `rs_lvgl_sys`。
 
 ```sh
 cargo run -p rs_lvgl_ui --example settings

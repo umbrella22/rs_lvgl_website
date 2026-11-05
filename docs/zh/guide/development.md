@@ -16,7 +16,7 @@ description: 构建并测试工作区，维护生成器、原生配置、双语�
 | `rs_lvgl_sys` | 编译随仓库提供的 LVGL 9.6 与兼容层，生成原始 bindgen 绑定，暴露配置输入 | `build.rs`、`src/lib.rs`、`shims/`、`vendor/` |
 | `rs_lvgl_codegen` | 解析 bindgen 输出，在构建期生成 Rust 控件封装 | `src/lib.rs`、`src/analysis.rs` |
 | `rs_lvgl` | 控件、显示、输入、样式、内存与计时器的公共封装 | `build.rs`、`src/lib.rs`、`src/widgets/` |
-| `rs_lvgl_ui` | 声明式 `App`/`View`/`Ui`、组件、特性与原生示例 | `src/lib.rs`、`src/node.rs`、`examples/` |
+| `rs_lvgl_ui` | 声明式 `App`/`View`/`Ui`、组件、特性与原生示例 | `src/lib.rs`、`src/node/mod.rs`、`examples/` |
 
 `Cargo.toml` 定义库工作区；`.cargo/config.toml` 定义 Xtensa 目标设置与 `cargo test-lvgl` 别名。Rspress 站点在 [rs_lvgl_website](https://github.com/umbrella22/rs_lvgl_website) 中维护，通过 `source/` 子模块固定库源码。本指南中的库命令从库仓库运行，下面的站点命令从网站仓库运行。
 
@@ -164,8 +164,14 @@ python3 scripts/install-skills.py --dest ~/.agents/skills
 python3 scripts/install-skills.py --dest ../application/.agents/skills --skill rs-lvgl-ui
 ```
 
-安装脚本拒绝覆盖已存在的 skill 目录。CI 通过 `scripts/check-skills.py` 校验打包后的 skill；发现与维护方式见 [AI 开发 skill](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/docs/ai-skills.md)。
+安装脚本拒绝覆盖已存在的 skill 目录。CI 通过 `scripts/check-skills.py` 校验打包后的 skill；发现与维护方式见 [AI 开发 skill](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/docs/ai-skills.md)。
 
 ## 宿主测试与目标限制
 
 宿主构建与测试在开发机上编译并运行随仓库提供的 LVGL，使用宿主工具链、生成的绑定和内存显示。它们不验证交叉编译工具链、ESP-IDF 集成、物理面板渲染、卸载期间的 DMA/GPU 完成，也不证明与外部 LVGL 提供方的 ABI 兼容。`.cargo/config.toml` 中的 Xtensa 运行器调用 `espflash flash --monitor`，因此对交叉目标执行 `cargo run` 或测试会写入已连接的硬件。本地运行不能复现 CI 环境。
+
+## 组合与原生检查
+
+[组合与受控表单](./composition.md)说明 0.5.0 的条件子节点、语义事件、typed 构造、插槽与显式绑定。通过 `npm run check-development-ui -- --source ./source` 验证网站固定的库源码；开发时可用 `--source ../lv_binding_rust` 选择本地库。常规构建与浏览器运行时使用固定的 `source/`。
+
+sys 构建根据生效的目标宏发布 `DEP_LVGL_LAYOUTS`，使手写包装分别遵循 Flex/Grid 是否可用。在库根目录运行 `python3 scripts/check-layout-config.py --locked` 可检查四种组合的真实消费者。声明式 UI 需要其支持的布局配置。

@@ -120,7 +120,7 @@ EXAMPLE_DARK=1 EXAMPLE_FRAMES=100 EXAMPLE_CAPTURE_DIR=target/captures cargo run 
 
 The ten focused examples share `examples/support/mod.rs`. Its `run` function creates the SDL window and mouse, initializes LVGL, mounts the `App`, and runs the common `timer_handler`, `drain` and `Ui::tick` sequence. Each example keeps its state, component action enum and view in one file. Tests beside each example render the same view on a memory display and dispatch native pointer events, so interaction assertions do not depend on a window server.
 
-[`button_click.rs`](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/examples/button_click.rs) is the smallest complete state/message/view cycle; [`sdl_demo.rs`](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/examples/sdl_demo.rs) shows the same host with a composite component.
+[`button_click.rs`](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/examples/button_click.rs) is the smallest complete state/message/view cycle; [`sdl_demo.rs`](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/examples/sdl_demo.rs) shows the same host with a composite component.
 
 ## Galleries
 
@@ -152,7 +152,7 @@ cargo run -p rs_lvgl_ui --example settings
 
 ![The component studio overview](https://raw.githubusercontent.com/umbrella22/rs_lvgl/main/docs/images/studio-overview.png)
 
-The [component studio guide](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/docs/component-studio.md) documents its nine categories and native checks. The focused example sources and their shared host are listed in [examples/README.md](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/examples/README.md).
+The [component studio guide](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/docs/component-studio.md) documents its nine categories and native checks. The focused example sources and their shared host are listed in [examples/README.md](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/examples/README.md).
 
 ## Run and capture the studio automatically
 

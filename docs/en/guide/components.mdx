@@ -10,6 +10,8 @@ import { GuideLinks } from '../../../components/GuideLinks';
 
 When several screens share a title, list row or button group, extract a function that returns `View<M>`. The built-in `components` module composes widgets in the same way to provide lists, navigation and overlays.
 
+The [composition and forms guide](./composition.md) covers lazy children, semantic callbacks, slots and typed bindings in 0.5.0.
+
 ## Start with a reusable view function
 
 A component can begin as an ordinary Rust function returning `View<M>`. Extracting a title gives its typography and spacing one shared definition. The parent still decides where that returned view appears.
@@ -62,7 +64,7 @@ Toasts have no internal timer. The application advances them from a message, for
 
 ## A settings screen
 
-The following is the `App` portion of a settings screen using navigation, a list, a panel, a confirmation dialog and toasts. The complete host program is [rs_lvgl_ui/examples/components.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/components.rs).
+The following is the `App` portion of a settings screen using navigation, a list, a panel, a confirmation dialog and toasts. The complete host program is [rs_lvgl_ui/examples/components.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_ui/examples/components.rs).
 
 <details>
 <summary>Show the complete settings App</summary>
@@ -226,7 +228,7 @@ Components read color and font tokens from the `Theme` passed to `view`; `Theme:
 
 ## Runnable example
 
-[components.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/components.rs) uses navigation, list rows, a panel, a reset dialog and success toasts in one application. It also shows toasts advancing from a tick message posted only while the queue is non-empty.
+[components.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_ui/examples/components.rs) uses navigation, list rows, a panel, a reset dialog and success toasts in one application. It also shows toasts advancing from a tick message posted only while the queue is non-empty.
 
 ```sh
 cargo run -p rs_lvgl_ui --example components --features simulator

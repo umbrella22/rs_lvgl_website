@@ -19,6 +19,7 @@
     "prebuild": "npm run diagrams:check && npm run examples:check && npm run wasm:ensure && npm run playground:wasm:ensure && npm run browser-engine:ensure",
     "playground": "npm run build && node scripts/playground-server.mjs",
     "check-playground": "node scripts/check-playground.mjs",
+    "check-development-ui": "node scripts/check-development-ui.mjs",
     "wasm:build": "node scripts/build-wasm.mjs",
     "wasm:check": "node scripts/build-wasm.mjs --check",
     "wasm:ensure": "node scripts/build-wasm.mjs --ensure",
