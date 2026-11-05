@@ -1,7 +1,7 @@
 struct Example;
 
 impl rs_lvgl_ui::App for Example {
-    type Msg = ();
+    type Action = ();
 
     fn update(&mut self, _: ()) {}
 

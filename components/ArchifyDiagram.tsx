@@ -7,8 +7,8 @@ type DiagramId = "data-model" | "message-flow" | "build-path" | "capabilities";
 
 const descriptions: Record<DiagramId, { zh: string; en: string }> = {
   "data-model": {
-    zh: "Settings 持有业务状态，Message 表达输入意图，App 描述更新规则。Ui 借用应用处理消息，并把 View 描述协调成原生对象。",
-    en: "Settings owns application state, Message expresses input intent, and App defines update rules. Ui borrows the app to process messages and reconcile View descriptions into native objects.",
+    zh: "Settings 持有业务状态，NotificationSettingsAction 描述通知设置组件的操作，App 定义更新规则。Ui 借用应用处理操作，并把 View 描述协调成原生对象。",
+    en: "Settings owns application state, NotificationSettingsAction describes notification settings actions, and App defines update rules. Ui borrows the app to process actions and reconcile View descriptions into native objects.",
   },
   "message-flow": {
     zh: "从开关的 1/0 原生值开始，沿消息入队、Ui::drain、状态更新和新 View 追踪一次交互。回调不会直接修改 App。",

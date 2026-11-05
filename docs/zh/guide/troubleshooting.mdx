@@ -103,6 +103,17 @@ LVGL_CONFIG_PATH conflicts with a requested Cargo capability: LV_USE_SLIDER must
 选中的 UI 能力。删除这些内容的头文件即使原始构建通过，也不是有效的 UI
 配置。
 
+## 关闭 Flex/Grid 后包装器编译失败
+
+`rs_lvgl` 0.4.0 的高层样式包装仍无条件引用部分 Flex/Grid 类型和函数。
+当应用 `lv_conf.h` 同时设置 `LV_USE_FLEX=0` 和 `LV_USE_GRID=0` 时，
+`rs_lvgl_sys` 会按配置省略这些符号，包装器随后可能报出缺少
+`lv_grid_align_t_LV_GRID_ALIGN_START`、`lv_style_set_grid_cell_y_align` 等错误。
+
+这是该版本包装器对裁剪配置的已知限制。使用 `rs_lvgl` 或 `rs_lvgl_ui` 0.4.0
+时保留 Flex 和 Grid；需要关闭布局的原生集成可直接使用 `rs_lvgl_sys`，
+并按有效配置调用 C API。原始绑定能编译并不代表高层包装支持同一配置。
+
 ## SDL 失败
 
 `sdl` feature 在构建期要求发现 SDL2。找不到时构建会 panic，消息指出缺失

@@ -36,23 +36,23 @@ A data-driven list needs both an order and stable item identities. The same iden
 - `.detail("Home")` appends muted trailing text; `.trailing(switch(...))` replaces it with an arbitrary node. An interactive trailing widget keeps its own handler, and a click on it does not also click the row.
 - `.chevron(true)` appends a right chevron for a navigation row.
 - `.selected(true)` draws the row with the theme accent through `State::CHECKED`. Selection is application state, so the next view decides it.
-- `.on_click(msg)` makes the row clickable and adds a pressed highlight. Rows without a click handler are not clickable.
+- `.on_click(action)` makes the row clickable and adds a pressed highlight. Rows without a click handler are not clickable.
 
 `ListItem::view(theme)` returns `View<M>`. Keys are the application's responsibility; a list built from runtime data keys each row with `Key::Id`.
 
-`Panel::new(title)` is a card with a header row and a content column. `.action(node)` appends header actions, usually `panel::icon_button(theme, symbol::SAVE, msg)`; `.child` and `.children` fill the content area. The panel fills its parent's width. Its content scrolls only when the panel has a bounded height, for example `.style(Style::default().flex_grow(1).height(Size::Percent(100)))`. Without a height it grows with its content.
+`Panel::new(title)` is a card with a header row and a content column. `.action(node)` appends header actions, usually `panel::icon_button(theme, symbol::SAVE, action)`; `.child` and `.children` fill the content area. The panel fills its parent's width. Its content scrolls only when the panel has a bounded height, for example `.grow(1).height(percent(100))`. Without a height it grows with its content.
 
 ## Navigation and file entries
 
 `NavState::new(root)` starts a non-empty page stack. `current()`, `pages()`, `depth()` and `can_go_back()` read it; `push`, `back` and `update(NavMsg<P>)` change it. `NavMsg::Push` adds a page, `Back` pops it, `Root` truncates to the root and `Replace` swaps the current page. `back()` returns `false` on the root page.
 
-`nav::view(&state, theme, title, page, back_msg)` renders a header, a back button while the stack is deeper than the root, and the supplied page. The body is keyed by stack depth, so a new page is created fresh instead of morphing the previous page's widgets and scroll position. The title is a render argument, not stored in `NavState`. `nav::link(theme, text, msg)` is a list row with a chevron that sends the navigation message.
+`nav::view(&state, theme, title, page, back_action)` renders a header, a back button while the stack is deeper than the root, and the supplied page. The body is keyed by stack depth, so a new page is created fresh instead of morphing the previous page's widgets and scroll position. The title is a render argument, not stored in `NavState`. `nav::link(theme, text, action)` is a list row with a chevron that sends the navigation message.
 
 `file_explorer::view(theme, location, parent, entries)` composes a location header and the same list rows from `FileEntry::file` and `FileEntry::directory` values. Each entry carries a stable `id`, display `name` and activation message; duplicate IDs produce the usual `DuplicateKey` error. The component performs no filesystem I/O. The application reads directories in `update` or its own task and supplies the resulting entries.
 
 ## Overlays
 
-`Dialog::new(title)` returns a centered card over a full-screen dimming backdrop. `.text` adds a paragraph, `.child` adds arbitrary body content and `.button(text, msg)` or `.primary(text, msg)` adds footer actions. `.on_dismiss(msg)` makes a backdrop click send that message. The card width defaults to 80 percent of the display, capped at 360 px; `.width(Size)` overrides it. The backdrop absorbs pointer input, so the view beneath is not usable while the dialog is shown. With `input-keypad`, the dialog root is also a modal focus scope; without that feature it remains a pointer overlay.
+`Dialog::new(title)` returns a centered card over a full-screen dimming backdrop. `.text` adds a paragraph, `.child` adds arbitrary body content and `.button(text, action)` or `.primary(text, action)` adds footer actions. `.on_dismiss(action)` makes a backdrop click send that message. The card width defaults to 80 percent of the display, capped at 360 px; `.width(Size)` overrides it. The backdrop absorbs pointer input, so the view beneath is not usable while the dialog is shown. With `input-keypad`, the dialog root is also a modal focus scope; without that feature it remains a pointer overlay.
 
 `toast::view(&toasts, theme, dismiss)` stacks keyed labels at the bottom of the display, newest last. Each toast is keyed by its queue id, so one expiry keeps the other labels. A click sends `dismiss(id)`. `Toasts::push(text, duration_ms)` and `push_kind(kind, text, duration_ms)` return the id; `dismiss(id)`, `clear()` and `with_max_visible(n)` manage the queue. `advance(elapsed_ms)` counts down and removes expired entries, returning whether the visible set changed.
 
@@ -62,7 +62,7 @@ Toasts have no internal timer. The application advances them from a message, for
 
 ## A settings screen
 
-The following is the `App` portion of a settings screen using navigation, a list, a panel, a confirmation dialog and toasts. The complete host program is [rs_lvgl_ui/examples/components.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/components.rs).
+The following is the `App` portion of a settings screen using navigation, a list, a panel, a confirmation dialog and toasts. The complete host program is [rs_lvgl_ui/examples/components.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/components.rs).
 
 <details>
 <summary>Show the complete settings App</summary>
@@ -85,7 +85,7 @@ enum Page {
 }
 
 #[derive(Clone)]
-enum Msg {
+enum SettingsAction {
     Nav(NavMsg<Page>),
     ToggleWifi,
     AskReset,
@@ -113,80 +113,80 @@ impl Settings {
         }
     }
 
-    fn root_page(&self, theme: &Theme) -> View<Msg> {
+    fn root_page(&self, theme: &Theme) -> View<SettingsAction> {
         list::list(
             theme,
             [
                 ListItem::new("Wi-Fi")
                     .icon(symbol::WIFI)
-                    .trailing(switch(self.wifi).on_value_changed(|_| Msg::ToggleWifi))
+                    .trailing(switch(self.wifi).on_value_changed(|_| SettingsAction::ToggleWifi))
                     .view(theme)
                     .key(Key::Named("wifi")),
-                nav::link(theme, "Display", Msg::Nav(NavMsg::Push(Page::Display)))
+                nav::link(theme, "Display", SettingsAction::Nav(NavMsg::Push(Page::Display)))
                     .key(Key::Named("display")),
                 ListItem::new("Reset")
-                    .on_click(Msg::AskReset)
+                    .on_click(SettingsAction::AskReset)
                     .view(theme)
                     .key(Key::Named("reset")),
             ],
         )
     }
 
-    fn display_page(&self, theme: &Theme) -> View<Msg> {
+    fn display_page(&self, theme: &Theme) -> View<SettingsAction> {
         Panel::new("Display")
-            .action(panel::icon_button(theme, symbol::SAVE, Msg::Save))
+            .action(panel::icon_button(theme, symbol::SAVE, SettingsAction::Save))
             .child(label("Only Wi-Fi is configurable on this screen."))
             .view(theme)
     }
 }
 
 impl App for Settings {
-    type Msg = Msg;
+    type Action = SettingsAction;
 
-    fn update(&mut self, msg: Msg) {
-        match msg {
-            Msg::Nav(msg) => self.nav.update(msg),
-            Msg::ToggleWifi => self.wifi = !self.wifi,
-            Msg::AskReset => self.confirm_reset = true,
-            Msg::CancelReset => self.confirm_reset = false,
-            Msg::Reset => {
+    fn update(&mut self, action: SettingsAction) {
+        match action {
+            SettingsAction::Nav(action) => self.nav.update(action),
+            SettingsAction::ToggleWifi => self.wifi = !self.wifi,
+            SettingsAction::AskReset => self.confirm_reset = true,
+            SettingsAction::CancelReset => self.confirm_reset = false,
+            SettingsAction::Reset => {
                 self.confirm_reset = false;
                 self.wifi = true;
                 self.nav.update(NavMsg::Root);
             }
-            Msg::Save => {
+            SettingsAction::Save => {
                 self.toasts
                     .push_kind(ToastKind::Success, "Settings saved", 2000);
             }
-            Msg::DismissToast(id) => self.toasts.dismiss(id),
-            Msg::Tick(elapsed) => {
+            SettingsAction::DismissToast(id) => self.toasts.dismiss(id),
+            SettingsAction::Tick(elapsed) => {
                 self.toasts.advance(elapsed);
             }
         }
     }
 
-    fn view(&self, theme: &Theme) -> View<Msg> {
+    fn view(&self, theme: &Theme) -> View<SettingsAction> {
         let page = match self.nav.current() {
             Page::Root => self.root_page(theme),
             Page::Display => self.display_page(theme),
         };
-        nav::view(&self.nav, theme, "Settings", page, Msg::Nav(NavMsg::Back))
+        nav::view(&self.nav, theme, "Settings", page, SettingsAction::Nav(NavMsg::Back))
     }
 
-    fn overlay(&self, theme: &Theme) -> Option<View<Msg>> {
+    fn overlay(&self, theme: &Theme) -> Option<View<SettingsAction>> {
         let mut stack = Vec::new();
         if self.confirm_reset {
             stack.push(
                 Dialog::new("Reset settings?")
                     .text("Wi-Fi returns to its default value.")
-                    .button("Cancel", Msg::CancelReset)
-                    .primary("Reset", Msg::Reset)
-                    .on_dismiss(Msg::CancelReset)
+                    .button("Cancel", SettingsAction::CancelReset)
+                    .primary("Reset", SettingsAction::Reset)
+                    .on_dismiss(SettingsAction::CancelReset)
                     .view(theme),
             );
         }
         if !self.toasts.is_empty() {
-            stack.push(toast::view(&self.toasts, theme, Msg::DismissToast));
+            stack.push(toast::view(&self.toasts, theme, SettingsAction::DismissToast));
         }
         (!stack.is_empty()).then(|| layers(stack))
     }
@@ -195,7 +195,7 @@ impl App for Settings {
 
 </details>
 
-The dialog and the toasts are both overlay state: `overlay` returns them only while `confirm_reset` is set or the queue is non-empty, and returning `None` deletes the overlay tree. The platform posts `Msg::Tick(elapsed)` while toasts are visible; the example does this in its frame loop and skips the message when the queue is empty.
+The dialog and the toasts are both overlay state: `overlay` returns them only while `confirm_reset` is set or the queue is non-empty, and returning `None` deletes the overlay tree. The platform posts `SettingsAction::Tick(elapsed)` while toasts are visible; the example does this in its frame loop and skips the message when the queue is empty.
 
 ## Choose a composite component
 
@@ -226,7 +226,7 @@ Components read color and font tokens from the `Theme` passed to `view`; `Theme:
 
 ## Runnable example
 
-[components.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/components.rs) uses navigation, list rows, a panel, a reset dialog and success toasts in one application. It also shows toasts advancing from a tick message posted only while the queue is non-empty.
+[components.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/components.rs) uses navigation, list rows, a panel, a reset dialog and success toasts in one application. It also shows toasts advancing from a tick message posted only while the queue is non-empty.
 
 ```sh
 cargo run -p rs_lvgl_ui --example components --features simulator

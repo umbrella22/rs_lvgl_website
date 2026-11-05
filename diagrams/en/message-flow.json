@@ -4,7 +4,7 @@
   "meta": {
     "title": "How one switch interaction updates the screen",
     "locale": "en",
-    "output": ".archify/dataflow-message-flow-en-20261026-175054/message-flow.html",
+    "output": ".archify/dataflow-message-flow-en-0.4.0-20261105/message-flow.html",
     "quality_profile": "showcase"
   },
   "stages": [
@@ -44,7 +44,7 @@
     {
       "id": "queue",
       "label": "EventQueue<M>",
-      "sublabel": "Enabled(bool)",
+      "sublabel": "Enabled(bool) action",
       "type": "messagebus",
       "stage": 2,
       "row": 0
@@ -60,7 +60,7 @@
     {
       "id": "view",
       "label": "App::view",
-      "sublabel": "View<Message>",
+      "sublabel": "View<Self::Action>",
       "type": "backend",
       "stage": 3,
       "row": 2
@@ -68,7 +68,7 @@
     {
       "id": "theme",
       "label": "Theme",
-      "sublabel": "Colors, spacing, styles",
+      "sublabel": "Font and color values",
       "type": "backend",
       "stage": 2,
       "row": 2
@@ -101,7 +101,7 @@
       "id": "post-message",
       "from": "handler",
       "to": "queue",
-      "label": "Message"
+      "label": "Enabled(bool)"
     },
     {
       "id": "drain-message",
@@ -156,6 +156,7 @@
       "dot": "cyan",
       "title": "Callbacks post messages",
       "items": [
+        "NotificationSettingsAction is the notification settings component action type.",
         "The native 1/0 value maps to Enabled(true/false). The callback does not call App::update.",
         "A full queue drops its oldest message and increments dropped; buffering is bounded.",
         "Programmatic value changes are suppressed during view writes so the app does not enqueue its own update."

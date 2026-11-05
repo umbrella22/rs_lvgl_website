@@ -6,41 +6,49 @@ struct Settings {
 }
 
 #[derive(Clone)]
-enum Message {
+enum NotificationSettingsAction {
     Enabled(bool),
     Reset,
 }
 
 impl App for Settings {
-    type Msg = Message;
+    type Action = NotificationSettingsAction;
 
-    fn update(&mut self, message: Message) {
-        match message {
-            Message::Enabled(value) => {
+    fn update(&mut self, action: NotificationSettingsAction) {
+        match action {
+            NotificationSettingsAction::Enabled(value) => {
                 self.enabled = value;
                 self.changes += 1;
             }
-            Message::Reset => {
+            NotificationSettingsAction::Reset => {
                 self.enabled = false;
                 self.changes = 0;
             }
         }
     }
 
-    fn view(&self, theme: &Theme) -> View<Message> {
+    fn view(&self, theme: &Theme) -> View<NotificationSettingsAction> {
         column([
-            label("Notifications").style(Style::title(theme)),
+            label("Notifications")
+                .font(theme.title_font)
+                .text_color(theme.text),
             row([
-                switch(self.enabled).on_value_changed(|value| Message::Enabled(value != 0)),
+                switch(self.enabled)
+                    .on_value_changed(|value| NotificationSettingsAction::Enabled(value != 0)),
                 label(if self.enabled { "Enabled" } else { "Disabled" }),
             ])
-            .style(Style::surface(theme).gap(24)),
+            .style(Style::surface(theme))
+            .gap(24),
             label(format!("Changed {} times", self.changes)),
             button("Reset")
-                .on_click(Message::Reset)
+                .on_click(NotificationSettingsAction::Reset)
                 .style(Style::accent(theme)),
         ])
-        .style(Style::screen(theme).pad(32).gap(24))
+        .style(Style::screen(theme))
+        .font(theme.body_font)
+        .text_color(theme.text)
+        .padding(32)
+        .gap(24)
     }
 }
 

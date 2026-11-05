@@ -10,7 +10,7 @@ matching translation.
 ## Build from a clean checkout
 
 This repository publishes its own GitHub Pages site at `/rs_lvgl_website/`.
-The `source/` submodule pins the library, vendored LVGL, native configuration and
+The `source/` submodule pins rs_lvgl 0.4.0 (`v0.4.0`), vendored LVGL, native configuration and
 desktop studio used by the browser consumers. Builds use that revision without
 requiring a separate library checkout next to this repository.
 
@@ -54,7 +54,10 @@ the existing examples.
 Use a short task introduction, show the smallest useful example, explain its
 visible result, and put configuration or lifetime rules beside the relevant
 operation. Detailed reference material follows the common path. Keep commands,
-API names and safety conditions equivalent in both languages.
+API names and safety conditions equivalent in both languages. Use component-specific
+action types with `App::Action`, direct style modifiers and explicit theme font/color
+tokens. Constructors initialize their embedded styles; use `style()` for reusable
+patches. Keep examples on the pinned release without legacy syntax comparisons.
 
 Rspress Steps and keyboard-accessible PlatformTabs format setup instructions.
 GuideLinks supplies localized

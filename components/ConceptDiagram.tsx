@@ -36,7 +36,7 @@ const copy = {
         {
           label: "Queue a message",
           code: "EventQueue",
-          detail: "The callback copies data and posts Msg.",
+          detail: "The callback copies data and posts a component action.",
         },
         {
           label: "Drain the queue",
@@ -145,7 +145,7 @@ const copy = {
         {
           label: "消息入队",
           code: "EventQueue",
-          detail: "回调复制输入数据并提交 Msg。",
+          detail: "回调复制输入数据并提交组件操作。",
         },
         {
           label: "处理队列",

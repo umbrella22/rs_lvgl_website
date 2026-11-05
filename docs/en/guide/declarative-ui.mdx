@@ -20,7 +20,9 @@ The `view` below returns a title, a description and a button. `column([...])` ar
 
 Change `gap(16)` to `gap(24)`, select **Run** and compare the spacing. You can also swap the title and description in the array and run it again.
 
-Constructors return a `View<M>` description. They do not create native widgets yet. `M` is the application's message type; a view without messages can use `View<()>`. Import the common functions and types with `use rs_lvgl_ui::prelude::*`.
+This guide uses the 0.4.0 API. Import common functions and types with `use rs_lvgl_ui::prelude::*`. Constructors return a `View<M>` description; they do not create native widgets yet.
+
+`M` is a generic parameter, like the familiar `T`, and its name is your choice. `View<NotificationSettingsAction>` means that this tree produces notification settings actions, such as toggling a switch or resetting it. State fields belong to the component struct, and the `update` method handles behavior; the action enum describes inputs. A view without actions can use `View<()>`.
 
 ## Change the child order
 
@@ -34,13 +36,13 @@ Extracting the title into a variable or function follows the same rule:
 use rs_lvgl_ui::prelude::*;
 
 fn page_title<M>(text: &str, theme: &Theme) -> View<M> {
-    label(text).style(Style::title(theme))
+    label(text).font(theme.title_font).text_color(theme.text)
 }
 
 fn settings_view(theme: &Theme) -> View<()> {
     let content = label("Notification preferences");
     let title = page_title("Settings", theme);
-    column([title, content]).style(Style::default().gap(12))
+    column([title, content]).gap(12)
 }
 ```
 
@@ -50,18 +52,18 @@ The code creates `content` before `title`, but the title appears first because i
 
 ## Set sizes, spacing and alignment
 
-Apply layout properties with `.style(...)`. Common choices are:
+Chain layout and style properties directly on the view. Common choices are:
 
 | Property | Effect |
 | --- | --- |
 | `.gap(12)` | Leave 12 pixels between adjacent children |
-| `.pad(16)` | Leave 16 pixels between the content and container edges |
-| `.width(Size::Percent(100))` | Fill the parent's available width |
-| `.height(Size::Px(48))` | Use a fixed height |
-| `.flex_grow(1)` | Take a share of the remaining flex space |
+| `.padding(16)` | Leave 16 pixels between the content and container edges |
+| `.width(percent(100))` | Fill the parent's available width |
+| `.height(px(48))` | Use a fixed height |
+| `.grow(1)` | Take a share of the remaining flex space |
 | `.flex_align(main, cross)` | Align children along the main and cross axes |
 
-`Size::Content` sizes a widget to its content. `.align(...)` positions a widget in its parent; `.flex_align(...)` arranges a container's children.
+`content()` sizes a widget to its content. `.align(...)` positions a widget in its parent; `.flex_align(...)` arranges a container's children.
 
 ## Place widgets in a grid
 
@@ -73,11 +75,31 @@ Change `.grid_cell(...)` to move a widget, or change the tracks to resize its av
 
 ## Style the widgets
 
-Styles build on the widget defaults. For example, `Style::screen(theme).pad(16)` applies the screen style and padding. Unset properties continue to use LVGL defaults or inherit from the parent.
+Constructors initialize the view's embedded style description, so you can write `label("Settings").font(theme.title_font).text_color(theme.text)` directly. The font and text color explicitly come from the current theme. `Ui::set_theme` requests a new view on the next update, when the new tokens are read; a previously saved style value does not track later theme changes.
 
-`Style::default()` sets nothing and inherits every LVGL class default. `Style::neutral()` clears the non-inheritable layout and appearance fields; plain containers and labels start transparent and borderless, while text color, font and text alignment stay unset so they inherit from the parent. The theme presets are `Style::title`, `body`, `muted`, `surface`, `accent` and `screen`. `Style::accent` also clears the native shadow, so a flat action button matches a dark background. A plain button keeps the native theme's surface and shadow unless the view overrides them.
+Set `.font(theme.body_font).text_color(theme.text)` on the root to let body text inherit the theme and remain readable in both light and dark modes.
 
-Interaction states use local style selectors: `.state_style(State::PRESSED, ...)` and `.state_style(State::FOCUSED, ...)` switch while LVGL holds the state. They do not enqueue messages or trigger a render.
+Extract repeated properties into a `style()` patch and merge it with `.style(patch)`:
+
+```rust
+use rs_lvgl_ui::prelude::*;
+
+fn settings_view(theme: &Theme) -> View<()> {
+    let panel = style().background(theme.surface).padding(16).gap(12);
+    column([label("Settings").font(theme.title_font).text_color(theme.text)])
+        .style(panel)
+        .padding_top(0)
+        .width(percent(100))
+}
+```
+
+Properties follow call order: the last explicit value wins, including `0` and `false`. Unset patch fields preserve previous values or inheritance. `background` also sets background opacity to 255; call `.background_opacity(...)` after it for translucency.
+
+`style()` returns a patch with every field unset. `Style::default()` is the equivalent Rust value-construction primitive; ordinary views do not need to call it. `Style::neutral()` explicitly clears non-inheritable layout and appearance fields. Containers and labels use it as their base while text color, font and alignment inherit. Use `Style::screen(theme)`, `surface(theme)` and `accent(theme)` for themed screens, panels and action buttons, then override individual properties directly. The accent preset clears native shadows; plain buttons retain the native theme's surface and shadow.
+
+These modifiers update the existing style value without a heap allocation for each property. Child collections, owned text, event closures and reconciliation can still allocate. The runtime manages native style resources during mount, update and unmount. See [Mount and update](./ui-runtime.mdx) for memory and lifetime boundaries.
+
+Use `.state_style(State::PRESSED, style().opacity(200))` or the corresponding `State::FOCUSED` selector for interaction states. LVGL switches the local style while it holds the state, without enqueuing an action or rebuilding the view.
 
 ## Give list items stable keys
 
@@ -96,11 +118,11 @@ Named and ID keys must be unique among siblings; duplicates fail validation with
 Keys make list updates local:
 
 ```rust
-// Msg::Remove(u64) is an application message in this fragment.
+// DeviceListAction::Remove(u64) describes an action of the device list.
 column(items.iter().map(|item| {
     row([
-        label(item.name.clone()).style(Style::default().flex_grow(1)),
-        button("Remove").on_click(Msg::Remove(item.id)),
+        label(item.name.clone()).grow(1),
+        button("Remove").on_click(DeviceListAction::Remove(item.id)),
     ])
     .key(Key::Id(item.id))
 }))
@@ -117,7 +139,7 @@ For a keyed list, changing one item's text updates one native label; appending o
 
 ## Read application state in the view
 
-When a title, switch value or list changes, `App::view` returns a new `View<Msg>`. `View<M>` is an alias for `Node<M>`, so helpers and built-in constructors return the same type.
+When a title, switch value or list changes, `App::view` returns a new `View<DeviceListAction>`. `View<M>` is an alias for `Node<M>`, so helpers and built-in constructors return the same type.
 
 <ArchifyDiagram id="data-model" />
 

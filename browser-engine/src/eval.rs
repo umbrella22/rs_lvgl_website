@@ -225,6 +225,19 @@ impl<'a> Evaluator<'a> {
             Expr::Field(f) => {
                 let value = self.expr(&f.base, env)?;
                 match (value, &f.member) {
+                    (Value::Theme(theme), syn::Member::Named(name)) => {
+                        match name.to_string().as_str() {
+                            "body_font" => Ok(Value::Font(theme.body_font)),
+                            "title_font" => Ok(Value::Font(theme.title_font)),
+                            "text" => Ok(Value::Color(theme.text)),
+                            "muted" => Ok(Value::Color(theme.muted)),
+                            "background" => Ok(Value::Color(theme.background)),
+                            "surface" => Ok(Value::Color(theme.surface)),
+                            "accent" => Ok(Value::Color(theme.accent)),
+                            "danger" => Ok(Value::Color(theme.danger)),
+                            _ => Err(Diagnostic::new("name", span, "Unknown theme token")),
+                        }
+                    }
                     (Value::Record(_, fields), syn::Member::Named(name)) => fields
                         .get(&name.to_string())
                         .cloned()

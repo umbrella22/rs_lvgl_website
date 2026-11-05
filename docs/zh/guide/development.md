@@ -164,7 +164,7 @@ python3 scripts/install-skills.py --dest ~/.agents/skills
 python3 scripts/install-skills.py --dest ../application/.agents/skills --skill rs-lvgl-ui
 ```
 
-安装脚本拒绝覆盖已存在的 skill 目录。CI 通过 `scripts/check-skills.py` 校验打包后的 skill；发现与维护方式见 [AI 开发 skill](https://github.com/umbrella22/rs_lvgl/blob/main/docs/ai-skills.md)。
+安装脚本拒绝覆盖已存在的 skill 目录。CI 通过 `scripts/check-skills.py` 校验打包后的 skill；发现与维护方式见 [AI 开发 skill](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/docs/ai-skills.md)。
 
 ## 宿主测试与目标限制
 

@@ -36,23 +36,23 @@ import { GuideLinks } from '../../../components/GuideLinks';
 - `.detail("Home")` 追加弱化的尾部文本；`.trailing(switch(...))` 用任意节点替换它。可交互的尾部节点保留自己的处理器，点击它不会同时点击整行。
 - `.chevron(true)` 追加右箭头，常用于导航行。
 - `.selected(true)` 通过 `State::CHECKED` 使用主题强调色绘制选中行。选中状态属于应用状态，由下一次视图决定。
-- `.on_click(msg)` 让行可点击并增加按下高亮。没有点击处理器的行不可点击。
+- `.on_click(action)` 让行可点击并增加按下高亮。没有点击处理器的行不可点击。
 
 `ListItem::view(theme)` 返回 `View<M>`。键由应用负责；由运行时数据生成的列表用 `Key::Id` 标记每一行。
 
-`Panel::new(title)` 是带头部行和内容列的卡片。`.action(node)` 追加头部操作，通常使用 `panel::icon_button(theme, symbol::SAVE, msg)`；`.child` 与 `.children` 填充内容区。面板占满父节点宽度；只有面板具有有界高度时，内容区才会滚动，例如 `.style(Style::default().flex_grow(1).height(Size::Percent(100)))`；没有高度时面板随内容增长。
+`Panel::new(title)` 是带头部行和内容列的卡片。`.action(node)` 追加头部操作，通常使用 `panel::icon_button(theme, symbol::SAVE, action)`；`.child` 与 `.children` 填充内容区。面板占满父节点宽度；只有面板具有有界高度时，内容区才会滚动，例如 `.grow(1).height(percent(100))`；没有高度时面板随内容增长。
 
 ## 导航与文件条目
 
 `NavState::new(root)` 创建非空页面栈。`current()`、`pages()`、`depth()` 和 `can_go_back()` 读取栈；`push`、`back` 与 `update(NavMsg<P>)` 修改栈。`NavMsg::Push` 压入页面，`Back` 弹出当前页，`Root` 截断到根页面，`Replace` 替换当前页。根页面上的 `back()` 返回 `false`。
 
-`nav::view(&state, theme, title, page, back_msg)` 渲染头部、返回按钮（栈深度大于根时）和传入的页面。页面主体以栈深度为键，因此新页面会重新创建控件并从头开始滚动，而不是把上一页的控件变形。标题是渲染参数，不存入 `NavState`。`nav::link(theme, text, msg)` 是带箭头的列表行，点击时发送导航消息。
+`nav::view(&state, theme, title, page, back_action)` 渲染头部、返回按钮（栈深度大于根时）和传入的页面。页面主体以栈深度为键，因此新页面会重新创建控件并从头开始滚动，而不是把上一页的控件变形。标题是渲染参数，不存入 `NavState`。`nav::link(theme, text, action)` 是带箭头的列表行，点击时发送导航消息。
 
 `file_explorer::view(theme, location, parent, entries)` 用 `FileEntry::file` 与 `FileEntry::directory` 组合出位置头部和相同的列表行。每个条目携带稳定的 `id`、显示用 `name` 和激活消息；重复 ID 会产生通常的 `DuplicateKey` 错误。该组件不执行文件系统 I/O；应用在 `update` 或自己的任务中读取目录，再把结果条目传入。
 
 ## 覆盖层
 
-`Dialog::new(title)` 返回全屏变暗遮罩上的居中卡片。`.text` 添加段落，`.child` 添加任意正文内容，`.button(text, msg)` 或 `.primary(text, msg)` 添加底部操作。`.on_dismiss(msg)` 让点击遮罩发送该消息。卡片宽度默认为显示区域的 80%，上限 360 px，可用 `.width(Size)` 覆盖。遮罩拦截指针输入，因此对话框显示期间下层视图不可操作。启用 `input-keypad` 时，对话框根节点同时是模态焦点范围；未启用该特性时它仍是指针覆盖层。
+`Dialog::new(title)` 返回全屏变暗遮罩上的居中卡片。`.text` 添加段落，`.child` 添加任意正文内容，`.button(text, action)` 或 `.primary(text, action)` 添加底部操作。`.on_dismiss(action)` 让点击遮罩发送该消息。卡片宽度默认为显示区域的 80%，上限 360 px，可用 `.width(Size)` 覆盖。遮罩拦截指针输入，因此对话框显示期间下层视图不可操作。启用 `input-keypad` 时，对话框根节点同时是模态焦点范围；未启用该特性时它仍是指针覆盖层。
 
 `toast::view(&toasts, theme, dismiss)` 在显示区域底部堆叠带键的标签，最新的在最下面。每条提示以队列 ID 为键，因此一条过期不会重建其余标签。点击发送 `dismiss(id)`。`Toasts::push(text, duration_ms)` 与 `push_kind(kind, text, duration_ms)` 返回 ID；`dismiss(id)`、`clear()` 和 `with_max_visible(n)` 管理队列。`advance(elapsed_ms)` 倒计时并移除过期项，返回可见集合是否变化。
 
@@ -62,7 +62,7 @@ import { GuideLinks } from '../../../components/GuideLinks';
 
 ## 设置界面
 
-下面是一个设置界面的 `App` 部分，使用导航、列表、面板、确认对话框和提示条。完整宿主程序见 [rs_lvgl_ui/examples/components.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/components.rs)。
+下面是一个设置界面的 `App` 部分，使用导航、列表、面板、确认对话框和提示条。完整宿主程序见 [rs_lvgl_ui/examples/components.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/components.rs)。
 
 <details>
 <summary>查看完整的设置页 App</summary>
@@ -85,7 +85,7 @@ enum Page {
 }
 
 #[derive(Clone)]
-enum Msg {
+enum SettingsAction {
     Nav(NavMsg<Page>),
     ToggleWifi,
     AskReset,
@@ -113,80 +113,80 @@ impl Settings {
         }
     }
 
-    fn root_page(&self, theme: &Theme) -> View<Msg> {
+    fn root_page(&self, theme: &Theme) -> View<SettingsAction> {
         list::list(
             theme,
             [
                 ListItem::new("Wi-Fi")
                     .icon(symbol::WIFI)
-                    .trailing(switch(self.wifi).on_value_changed(|_| Msg::ToggleWifi))
+                    .trailing(switch(self.wifi).on_value_changed(|_| SettingsAction::ToggleWifi))
                     .view(theme)
                     .key(Key::Named("wifi")),
-                nav::link(theme, "Display", Msg::Nav(NavMsg::Push(Page::Display)))
+                nav::link(theme, "Display", SettingsAction::Nav(NavMsg::Push(Page::Display)))
                     .key(Key::Named("display")),
                 ListItem::new("Reset")
-                    .on_click(Msg::AskReset)
+                    .on_click(SettingsAction::AskReset)
                     .view(theme)
                     .key(Key::Named("reset")),
             ],
         )
     }
 
-    fn display_page(&self, theme: &Theme) -> View<Msg> {
+    fn display_page(&self, theme: &Theme) -> View<SettingsAction> {
         Panel::new("Display")
-            .action(panel::icon_button(theme, symbol::SAVE, Msg::Save))
+            .action(panel::icon_button(theme, symbol::SAVE, SettingsAction::Save))
             .child(label("Only Wi-Fi is configurable on this screen."))
             .view(theme)
     }
 }
 
 impl App for Settings {
-    type Msg = Msg;
+    type Action = SettingsAction;
 
-    fn update(&mut self, msg: Msg) {
-        match msg {
-            Msg::Nav(msg) => self.nav.update(msg),
-            Msg::ToggleWifi => self.wifi = !self.wifi,
-            Msg::AskReset => self.confirm_reset = true,
-            Msg::CancelReset => self.confirm_reset = false,
-            Msg::Reset => {
+    fn update(&mut self, action: SettingsAction) {
+        match action {
+            SettingsAction::Nav(action) => self.nav.update(action),
+            SettingsAction::ToggleWifi => self.wifi = !self.wifi,
+            SettingsAction::AskReset => self.confirm_reset = true,
+            SettingsAction::CancelReset => self.confirm_reset = false,
+            SettingsAction::Reset => {
                 self.confirm_reset = false;
                 self.wifi = true;
                 self.nav.update(NavMsg::Root);
             }
-            Msg::Save => {
+            SettingsAction::Save => {
                 self.toasts
                     .push_kind(ToastKind::Success, "Settings saved", 2000);
             }
-            Msg::DismissToast(id) => self.toasts.dismiss(id),
-            Msg::Tick(elapsed) => {
+            SettingsAction::DismissToast(id) => self.toasts.dismiss(id),
+            SettingsAction::Tick(elapsed) => {
                 self.toasts.advance(elapsed);
             }
         }
     }
 
-    fn view(&self, theme: &Theme) -> View<Msg> {
+    fn view(&self, theme: &Theme) -> View<SettingsAction> {
         let page = match self.nav.current() {
             Page::Root => self.root_page(theme),
             Page::Display => self.display_page(theme),
         };
-        nav::view(&self.nav, theme, "Settings", page, Msg::Nav(NavMsg::Back))
+        nav::view(&self.nav, theme, "Settings", page, SettingsAction::Nav(NavMsg::Back))
     }
 
-    fn overlay(&self, theme: &Theme) -> Option<View<Msg>> {
+    fn overlay(&self, theme: &Theme) -> Option<View<SettingsAction>> {
         let mut stack = Vec::new();
         if self.confirm_reset {
             stack.push(
                 Dialog::new("Reset settings?")
                     .text("Wi-Fi returns to its default value.")
-                    .button("Cancel", Msg::CancelReset)
-                    .primary("Reset", Msg::Reset)
-                    .on_dismiss(Msg::CancelReset)
+                    .button("Cancel", SettingsAction::CancelReset)
+                    .primary("Reset", SettingsAction::Reset)
+                    .on_dismiss(SettingsAction::CancelReset)
                     .view(theme),
             );
         }
         if !self.toasts.is_empty() {
-            stack.push(toast::view(&self.toasts, theme, Msg::DismissToast));
+            stack.push(toast::view(&self.toasts, theme, SettingsAction::DismissToast));
         }
         (!stack.is_empty()).then(|| layers(stack))
     }
@@ -195,7 +195,7 @@ impl App for Settings {
 
 </details>
 
-对话框与提示条都属于覆盖层状态：只有 `confirm_reset` 为真或队列非空时，`overlay` 才返回它们；返回 `None` 会删除覆盖层树。提示条可见期间，平台投递 `Msg::Tick(elapsed)`；示例在帧循环中执行这一步，并在队列为空时跳过消息。
+对话框与提示条都属于覆盖层状态：只有 `confirm_reset` 为真或队列非空时，`overlay` 才返回它们；返回 `None` 会删除覆盖层树。提示条可见期间，平台投递 `SettingsAction::Tick(elapsed)`；示例在帧循环中执行这一步，并在队列为空时跳过消息。
 
 ## 选择组合组件
 
@@ -226,7 +226,7 @@ impl App for Settings {
 
 ## 可运行示例
 
-[components.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/components.rs) 在同一个应用中使用导航、列表行、面板、重置对话框与成功提示条，并演示只在队列非空时投递 tick 消息来推进提示条。
+[components.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/components.rs) 在同一个应用中使用导航、列表行、面板、重置对话框与成功提示条，并演示只在队列非空时投递 tick 消息来推进提示条。
 
 ```sh
 cargo run -p rs_lvgl_ui --example components --features simulator

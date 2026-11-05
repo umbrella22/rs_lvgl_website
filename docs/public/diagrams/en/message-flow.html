@@ -5207,7 +5207,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
         <!-- Flow paths -->
         <path data-edge-from="switch" data-edge-to="handler" data-edge-label="i32" data-edge-key="0" data-edge-id="read-value" data-composition-points="156,157;259,157" d="M 156 157 L 259 157" class="a-default" data-animate="edge" style="--step:0" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="handler" data-edge-to="queue" data-edge-label="Message" data-edge-key="1" data-edge-id="post-message" data-composition-points="371,157;474,157" d="M 371 157 L 474 157" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="handler" data-edge-to="queue" data-edge-label="Enabled(bool)" data-edge-key="1" data-edge-id="post-message" data-composition-points="371,157;474,157" d="M 371 157 L 474 157" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <path data-edge-from="queue" data-edge-to="update" data-edge-label="Ui::drain" data-edge-key="2" data-edge-id="drain-message" data-composition-points="586,157;689,157" d="M 586 157 L 689 157" class="a-default" data-animate="edge" style="--step:2" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <path data-edge-from="update" data-edge-to="view" data-edge-label="updated state" data-edge-key="3" data-edge-id="updated-state" data-composition-points="745,186;745,356" d="M 745 186 L 745 356" class="a-default" data-animate="edge" style="--step:3" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <path data-edge-from="theme" data-edge-to="view" data-edge-label="&amp;Theme" data-edge-key="4" data-edge-id="borrow-theme" data-composition-points="586,385;689,385" d="M 586 385 L 689 385" class="a-default" data-animate="edge" style="--step:4" stroke-width="1.4" marker-end="url(#arrowhead)"/>
@@ -5241,8 +5241,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <text data-detail="context" x="315" y="165" class="t-muted" font-size="7" text-anchor="middle">value != 0</text>
         </g>
 
-        <g id="node-queue" data-node-id="queue" data-node-label="EventQueue&lt;M&gt;" tabindex="0" role="button" aria-label="Focus EventQueue&lt;M&gt;, Enabled(bool), 03 / UI runtime" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="Enabled(bool)" data-node-context="03 / UI runtime">
-          <title>EventQueue&lt;M&gt; · Enabled(bool) · 03 / UI runtime</title>
+        <g id="node-queue" data-node-id="queue" data-node-label="EventQueue&lt;M&gt;" tabindex="0" role="button" aria-label="Focus EventQueue&lt;M&gt;, Enabled(bool) action, 03 / UI runtime" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="Enabled(bool) action" data-node-context="03 / UI runtime">
+          <title>EventQueue&lt;M&gt; · Enabled(bool) action · 03 / UI runtime</title>
           <rect x="474" y="128" width="112" height="58" rx="6" class="c-mask"/>
           <rect x="474" y="128" width="112" height="58" rx="6" class="c-messagebus" data-animate="node" style="--step:2" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(480 134) scale(0.6875)">
@@ -5252,7 +5252,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="532" y="149" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">EventQueue&lt;M&gt;</text>
-          <text data-detail="context" x="530" y="165" class="t-muted" font-size="7" text-anchor="middle">Enabled(bool)</text>
+          <text data-detail="context" x="530" y="165" class="t-muted" font-size="7" text-anchor="middle">Enabled(bool) action</text>
         </g>
 
         <g id="node-update" data-node-id="update" data-node-label="App::update" tabindex="0" role="button" aria-label="Focus App::update, enabled / changes, 04 / Application" aria-pressed="false" data-node-kind="backend" data-node-sublabel="enabled / changes" data-node-context="04 / Application">
@@ -5266,26 +5266,26 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <text data-detail="context" x="745" y="165" class="t-muted" font-size="7" text-anchor="middle">enabled / changes</text>
         </g>
 
-        <g id="node-view" data-node-id="view" data-node-label="App::view" tabindex="0" role="button" aria-label="Focus App::view, View&lt;Message&gt;, 04 / Application" aria-pressed="false" data-node-kind="backend" data-node-sublabel="View&lt;Message&gt;" data-node-context="04 / Application">
-          <title>App::view · View&lt;Message&gt; · 04 / Application</title>
+        <g id="node-view" data-node-id="view" data-node-label="App::view" tabindex="0" role="button" aria-label="Focus App::view, View&lt;Self::Action&gt;, 04 / Application" aria-pressed="false" data-node-kind="backend" data-node-sublabel="View&lt;Self::Action&gt;" data-node-context="04 / Application">
+          <title>App::view · View&lt;Self::Action&gt; · 04 / Application</title>
           <rect x="689" y="356" width="112" height="58" rx="6" class="c-mask"/>
           <rect x="689" y="356" width="112" height="58" rx="6" class="c-backend" data-animate="node" style="--step:4" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(695 362) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="745" y="377" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">App::view</text>
-          <text data-detail="context" x="745" y="393" class="t-muted" font-size="7" text-anchor="middle">View&lt;Message&gt;</text>
+          <text data-detail="context" x="745" y="393" class="t-muted" font-size="7" text-anchor="middle">View&lt;Self::Action&gt;</text>
         </g>
 
-        <g id="node-theme" data-node-id="theme" data-node-label="Theme" tabindex="0" role="button" aria-label="Focus Theme, Colors, spacing, styles, 03 / UI runtime" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Colors, spacing, styles" data-node-context="03 / UI runtime">
-          <title>Theme · Colors, spacing, styles · 03 / UI runtime</title>
+        <g id="node-theme" data-node-id="theme" data-node-label="Theme" tabindex="0" role="button" aria-label="Focus Theme, Font and color values, 03 / UI runtime" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Font and color values" data-node-context="03 / UI runtime">
+          <title>Theme · Font and color values · 03 / UI runtime</title>
           <rect x="474" y="356" width="112" height="58" rx="6" class="c-mask"/>
           <rect x="474" y="356" width="112" height="58" rx="6" class="c-backend" data-animate="node" style="--step:4" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(480 362) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="530" y="377" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">Theme</text>
-          <text data-detail="context" x="530" y="393" class="t-muted" font-size="7" text-anchor="middle">Colors, spacing, styles</text>
+          <text data-detail="context" x="530" y="393" class="t-muted" font-size="7" text-anchor="middle">Font and color values</text>
         </g>
 
         <g id="node-render" data-node-id="render" data-node-label="Validate + diff" tabindex="0" role="button" aria-label="Focus Validate + diff, Ui::render, 05 / Apply view" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Ui::render" data-node-context="05 / Apply view">
@@ -5315,9 +5315,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <rect x="190.5" y="136" width="34" height="16" rx="4" class="c-mask"/>
           <text x="207.5" y="147" class="t-edge-default" font-size="8" text-anchor="middle">i32</text>
         </g>
-        <g data-detail="context" data-edge-from="handler" data-edge-to="queue" data-edge-label="Message" data-edge-key="1" data-edge-id="post-message">
-          <rect x="399.35" y="136" width="46.3" height="16" rx="4" class="c-mask"/>
-          <text x="422.5" y="147" class="t-edge-default" font-size="8" text-anchor="middle">Message</text>
+        <g data-detail="context" data-edge-from="handler" data-edge-to="queue" data-edge-label="Enabled(bool)" data-edge-key="1" data-edge-id="post-message">
+          <rect x="384.65" y="136" width="75.7" height="16" rx="4" class="c-mask"/>
+          <text x="422.5" y="147" class="t-edge-default" font-size="8" text-anchor="middle">Enabled(bool)</text>
         </g>
         <g data-detail="context" data-edge-from="queue" data-edge-to="update" data-edge-label="Ui::drain" data-edge-key="2" data-edge-id="drain-message">
           <rect x="609.45" y="136" width="56.1" height="16" rx="4" class="c-mask"/>
@@ -5535,6 +5535,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>Callbacks post messages</h3>
         </div>
         <ul>
+          <li>NotificationSettingsAction is the notification settings component action type.</li>
           <li>The native 1/0 value maps to Enabled(true/false). The callback does not call App::update.</li>
           <li>A full queue drops its oldest message and increments dropped; buffering is bounded.</li>
           <li>Programmatic value changes are suppressed during view writes so the app does not enqueue its own update.</li>

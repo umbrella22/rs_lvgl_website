@@ -93,14 +93,14 @@ for (let pass = 1; pass <= passes; pass++) {
   assert.equal(other._studio_state(0),480); assert.equal(other._studio_state(2),0); assert.equal(app._studio_state(0),640);
   other._studio_destroy(); app._studio_destroy();
   passed("independent native instances, theme and display size");
-  const edited = await instance(source.replace('"Notifications"','"Browser edit"').replace('.pad(32)', '.pad(40)'));
+  const edited = await instance(source.replace('"Notifications"','"Browser edit"').replace('.padding(32)', '.padding(40)'));
   assert.notEqual(sha256(pixels(edited)), original);
   if (pass === 1) await fs.writeFile(path.join(directory,"edited.png"),encodePng(640,400,pixels(edited)));
   edited._studio_destroy();
   passed("edited text and layout render without compilation");
   for (const [text, kind] of [
     [screen('label("oops"'),1], [screen('if false { loop {} } label("ok")'),2],
-    [screen('label("x").style(Style::default().width(Size::Px(40000)))'),3],
+    [screen('label("x").width(px(40000))'),3],
     [screen('again(theme)') + '\nfn again(theme: &Theme) -> View<()> { again(theme) }',4],
     [screen('label(true)'),5],
     [screen('let value = work(16); label(format!("{value}"))') + '\nfn work(n: u32) -> u32 { if n == 0 { 0 } else { work(n - 1) + work(n - 1) } }',4],
@@ -125,9 +125,10 @@ for (let pass = 1; pass <= passes; pass++) {
   assert.equal(diagnostic(overflow)?.kind,3); overflow._studio_destroy();
   passed("event-time arithmetic failure is reported without unwinding a native callback");
   const slider = source.replace("enabled: bool,", "enabled: bool,\n    level: i32,").replace("Enabled(bool),", "Enabled(bool),\n    Level(i32),")
-    .replace("Message::Reset => {", "Message::Level(value) => { self.level = value; }\n            Message::Reset => {")
-    .replace("switch(self.enabled).on_value_changed(|value| Message::Enabled(value != 0))", "slider(0, 100, self.level).on_value_changed(|value| Message::Level(value))")
+    .replace("NotificationSettingsAction::Reset => {", "NotificationSettingsAction::Level(value) => { self.level = value; }\n            NotificationSettingsAction::Reset => {")
+    .replace(/switch\(self.enabled\)\s*\.on_value_changed\(\|value\|\s*\{?\s*NotificationSettingsAction::Enabled\(value != 0\)\s*\}?\)/, "slider(0, 100, self.level).on_value_changed(|value| NotificationSettingsAction::Level(value))")
     .replace('label(if self.enabled { "Enabled" } else { "Disabled" })', 'label(format!("{}", self.level))').replace("enabled: false,", "enabled: false,\n        level: 20,");
+  assert.match(slider, /slider\(0, 100, self.level\)/, "source edit must replace the switch with a slider");
   const sliderApp = await instance(slider); const sliderBefore = sha256(pixels(sliderApp)); click(sliderApp,150,112);
   assert.ok(sliderApp._studio_state(2)>0); assert.notEqual(sha256(pixels(sliderApp)),sliderBefore); sliderApp._studio_destroy();
   passed("edited slider delivers typed values and redraws its state label");

@@ -2,9 +2,9 @@
   "schema_version": 1,
   "diagram_type": "class",
   "meta": {
-    "title": "状态、消息与视图的分工",
+    "title": "状态、操作与视图的分工",
     "locale": "zh-CN",
-    "output": ".archify/class-data-model-zh-20261026-163429/data-model.html",
+    "output": ".archify/class-data-model-zh-0.4.0-20261105/data-model.html",
     "quality_profile": "showcase"
   },
   "layout": {
@@ -41,12 +41,12 @@
       "methods": [
         {
           "name": "update",
-          "parameters": "Msg"
+          "parameters": "Self::Action"
         },
         {
           "name": "view",
           "parameters": "&Theme",
-          "returns": "View<Msg>"
+          "returns": "View<Self::Action>"
         }
       ]
     },
@@ -70,7 +70,7 @@
     },
     {
       "id": "message",
-      "label": "Message",
+      "label": "NotificationSettingsAction",
       "kind": "enum",
       "sublabel": "输入意图，不是状态容器",
       "row": 1,

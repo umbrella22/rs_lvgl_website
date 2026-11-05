@@ -2,10 +2,12 @@ use rs_lvgl_ui::prelude::*;
 
 fn page_title<M>(text: &str, theme: &Theme) -> View<M> {
     column([
-        label("WORKSPACE").style(Style::muted(theme)),
-        label(text).style(Style::title(theme)),
+        label("WORKSPACE")
+            .font(theme.body_font)
+            .text_color(theme.muted),
+        label(text).font(theme.title_font).text_color(theme.text),
     ])
-    .style(Style::default().gap(8))
+    .gap(8)
 }
 
 fn view(theme: &Theme) -> View<()> {
@@ -13,5 +15,9 @@ fn view(theme: &Theme) -> View<()> {
     let title = page_title("Settings", theme);
 
     column([title, content, button("Save").style(Style::accent(theme))])
-        .style(Style::screen(theme).pad(24).gap(24))
+        .style(Style::screen(theme))
+        .font(theme.body_font)
+        .text_color(theme.text)
+        .padding(24)
+        .gap(24)
 }

@@ -15,17 +15,19 @@ description: 无需本地服务，修改 Rust UI 示例并操作真实 LVGL 控�
 
 | 内容 | 浏览器支持范围 |
 | --- | --- |
-| 应用 | 一个 `impl App`，包含 `type Msg`、`update` 和 `view`；`fn app() -> impl App` 返回初始状态 |
+| 应用 | 一个 `impl App`，包含 `type Action`、`update` 和 `view`；`fn app() -> impl App` 返回初始状态 |
 | 数据 | 具名字段结构体、单元结构体、单元或元组消息变体；布尔值、整数、字符串、数组与元组 |
 | 表达式 | `let`、普通辅助函数、闭包、`if`、无守卫的 `match`、数组索引、标量比较与算术、赋值 |
 | 列表 | 数组的 `.into_iter().map(...)`；命名子视图；`.child(...)` 与 `.children(...)` |
 | 文本 | `format!("{}", value)`、`format!("{name}")`、`.to_string()`；不支持格式说明符 |
-| 布局 | `obj`、`row`、`column`、`grid`；`Size`、`GridTrack`、`grid_cell` 和稳定的 `Key` |
+| 布局 | `obj`、`row`、`column`、`grid`；`px`、`percent`、`content`、`GridTrack`、`grid_cell` 和稳定的 `Key` |
 | 控件 | `label`、`button`、`switch`、`slider`、`bar`、`arc`、`checkbox`、`textarea`、`dropdown`、`roller`、`spinbox`、`spinner`、`led` |
 | 输入 | `on_click`、`on_long_press`、`on_value_changed`、`on_text_changed`；输入框支持 `placeholder`、`password`、`multiline`、`keyboard_id` |
-| 样式 | `Style` 的六个主题预设、`default`、`neutral`；边距、间距、尺寸与最小/最大尺寸、颜色、边框、圆角、透明度、对齐、偏移、隐藏和禁用 |
+| 样式 | 直接链式设置边距、间距、尺寸与最小/最大尺寸、颜色、字体、边框、圆角、透明度、对齐、偏移、隐藏和禁用；用 `style()` 复用补丁，也支持 `Style` 预设 |
 
 使用 `use rs_lvgl_ui::prelude::*;` 导入，并沿用示例中的函数调用方式。颜色可写为 `Color::rgb(240, 120, 60)`。整数支持 `i8` 到 `i64`、`u8` 到 `u64`，`isize` 和 `usize` 按 32 位处理。数值超出字段类型或 UI 参数范围时会报错，不会自动截断。
+
+`type Action = BrightnessAction` 把此组件的操作类型交给框架；左侧 `Action` 来自 `App` 接口，右侧类型名由组件定义。尺寸使用 `.width(px(240))`，字体和颜色可直接读取 `theme.title_font` 与 `theme.text`。
 
 例如，把滑块的值保存在状态中，事件到来时再写回：
 
@@ -37,29 +39,29 @@ struct Brightness {
 }
 
 #[derive(Clone)]
-enum Message {
+enum BrightnessAction {
     Level(i32),
 }
 
 impl App for Brightness {
-    type Msg = Message;
+    type Action = BrightnessAction;
 
-    fn update(&mut self, message: Message) {
-        match message {
-            Message::Level(value) => {
+    fn update(&mut self, action: BrightnessAction) {
+        match action {
+            BrightnessAction::Level(value) => {
                 self.level = value;
             }
         }
     }
 
-    fn view(&self, theme: &Theme) -> View<Message> {
+    fn view(&self, theme: &Theme) -> View<BrightnessAction> {
         column([
             label(format!("Brightness: {}", self.level)),
             slider(0, 100, self.level)
-                .on_value_changed(|value| Message::Level(value))
-                .style(Style::default().width(Size::Px(240))),
+                .on_value_changed(|value| BrightnessAction::Level(value))
+                .width(px(240)),
         ])
-        .style(Style::screen(theme).pad(32).gap(24))
+        .style(Style::screen(theme)).font(theme.body_font).text_color(theme.text).padding(32).gap(24)
     }
 }
 

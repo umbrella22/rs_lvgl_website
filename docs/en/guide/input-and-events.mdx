@@ -22,13 +22,15 @@ This example works immediately. Replace `Notifications` with your own title and 
 
 ## Store the input in application state
 
+`NotificationSettingsAction` is the notification settings component's own action enum. `Enabled(bool)` and `Reset` describe inputs; `enabled` and `changes` are state fields, and the `update` method implements their changes. `type Action = NotificationSettingsAction` connects this type to the `App` interface; the component chooses the name on the right.
+
 The switch interaction has three steps:
 
-1. `switch(self.enabled)` describes the current value. `on_value_changed` converts the native `1` or `0` into `Message::Enabled(value != 0)`.
+1. `switch(self.enabled)` describes the current value. `on_value_changed` converts the native `1` or `0` into `NotificationSettingsAction::Enabled(value != 0)`.
 2. `update` receives the message, stores `enabled` and increments `changes`.
 3. `view` reads both fields again to update the switch, label and count.
 
-A button needs no value payload: `button("Reset").on_click(Message::Reset)` sends the reset message directly. Messages implement `Clone + 'static` because a click handler stores its message and clones it for each click.
+A button needs no value payload: `button("Reset").on_click(NotificationSettingsAction::Reset)` sends the reset message directly. Messages implement `Clone + 'static` because a click handler stores its message and clones it for each click.
 
 <ArchifyDiagram id="message-flow" />
 
@@ -54,7 +56,7 @@ ui.timer_handler(); // dispatch native timers and input callbacks
 let stats = ui.drain(&mut app, 32)?;
 ```
 
-The snippet is a frame-loop fragment; the [input example](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/input.rs) supplies the display, keypad and loop.
+The snippet is a frame-loop fragment; the [input example](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/input.rs) supplies the display, keypad and loop.
 
 `drain(&mut app, max_messages)` processes at most the requested number of messages, calls `App::update` once per message, then calls `App::view` and reconciles once for the whole batch. It returns `DrainStats`:
 
@@ -72,7 +74,7 @@ Direct handlers respond to their own node. Descendant events require a bubbled h
 
 | Builder | Message payload | Delivery |
 | --- | --- | --- |
-| `on_click(msg)` | `M` cloned per event | `LV_EVENT_CLICKED` on the node |
+| `on_click(action)` | `M` cloned per event | `LV_EVENT_CLICKED` on the node |
 | `on_value_changed(f)` | `i32`, read from the native widget after the change | `VALUE_CHANGED`; see the per-widget values below |
 | `on_text_changed(f)` | `&str` borrowed for the call | `VALUE_CHANGED` on a textarea; copy the text to retain it |
 | `on_key(f)` | full `u32` LVGL key code | `LV_EVENT_KEY`; `NEXT`/`PREV` are consumed by focus navigation |
@@ -80,7 +82,7 @@ Direct handlers respond to their own node. Descendant events require a bubbled h
 | `on_gesture(f)` | `GestureDirection` | one directional gesture event; the generic `Gesture` event is separate |
 | `on_scroll(f)` | `ScrollOffset { x, y }` in pixels | continuous `SCROLL`, including programmatic scrolling |
 | `on_pointer(f)` | `PointerEvent { event, x, y }` in display pixels | native pointer press, pressing, click, long-press and release events |
-| `on_long_press(msg)` | `M` cloned | `LONG_PRESSED`, not `LONG_PRESSED_REPEAT` |
+| `on_long_press(action)` | `M` cloned | `LONG_PRESSED`, not `LONG_PRESSED_REPEAT` |
 | `on_event(f)` | `&Event -> Option<M>` | supported events whose target is this node |
 | `on_bubbled_event(f)` | `&InputEvent -> Option<M>` | events bubbled from descendants |
 
@@ -144,7 +146,7 @@ The queue and boxed handlers allocate. `rs_lvgl_ui` is `no_std` outside tests an
 
 ## Runnable example
 
-[input.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/input.rs) creates an SDL window, mouse and keyboard, mounts two buttons and a scrollable column, binds the keyboard to the UI, focuses `Key::Named("add")`, and drains pointer clicks, key codes and scroll offsets in its frame loop.
+[input.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/input.rs) creates an SDL window, mouse and keyboard, mounts two buttons and a scrollable column, binds the keyboard to the UI, focuses `Key::Named("add")`, and drains pointer clicks, key codes and scroll offsets in its frame loop.
 
 ```sh
 cargo run -p rs_lvgl_ui --example input --features simulator,input-keypad

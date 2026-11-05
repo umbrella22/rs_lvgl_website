@@ -4,7 +4,7 @@
   "meta": {
     "title": "一份目标配置，连接 C 与 Rust",
     "locale": "zh-CN",
-    "output": ".archify/dataflow-build-path-zh-20261026-175054/build-path.html",
+    "output": ".archify/dataflow-build-path-zh-0.4.0-20261105/build-path.html",
     "quality_profile": "showcase"
   },
   "stages": [

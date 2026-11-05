@@ -5207,7 +5207,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
         <!-- Flow paths -->
         <path data-edge-from="switch" data-edge-to="handler" data-edge-label="i32" data-edge-key="0" data-edge-id="read-value" data-composition-points="156,157;259,157" d="M 156 157 L 259 157" class="a-default" data-animate="edge" style="--step:0" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="handler" data-edge-to="queue" data-edge-label="Message" data-edge-key="1" data-edge-id="post-message" data-composition-points="371,157;474,157" d="M 371 157 L 474 157" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="handler" data-edge-to="queue" data-edge-label="Enabled(bool)" data-edge-key="1" data-edge-id="post-message" data-composition-points="371,157;474,157" d="M 371 157 L 474 157" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <path data-edge-from="queue" data-edge-to="update" data-edge-label="Ui::drain" data-edge-key="2" data-edge-id="drain-message" data-composition-points="586,157;689,157" d="M 586 157 L 689 157" class="a-default" data-animate="edge" style="--step:2" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <path data-edge-from="update" data-edge-to="view" data-edge-label="更新后的状态" data-edge-key="3" data-edge-id="updated-state" data-composition-points="745,186;745,356" d="M 745 186 L 745 356" class="a-default" data-animate="edge" style="--step:3" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <path data-edge-from="theme" data-edge-to="view" data-edge-label="&amp;Theme" data-edge-key="4" data-edge-id="borrow-theme" data-composition-points="586,385;689,385" d="M 586 385 L 689 385" class="a-default" data-animate="edge" style="--step:4" stroke-width="1.4" marker-end="url(#arrowhead)"/>
@@ -5241,8 +5241,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <text data-detail="context" x="315" y="165" class="t-muted" font-size="7" text-anchor="middle">value != 0</text>
         </g>
 
-        <g id="node-queue" data-node-id="queue" data-node-label="EventQueue&lt;M&gt;" tabindex="0" role="button" aria-label="聚焦EventQueue&lt;M&gt;，Enabled(bool), 03 / UI 运行时" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="Enabled(bool)" data-node-context="03 / UI 运行时">
-          <title>EventQueue&lt;M&gt; · Enabled(bool) · 03 / UI 运行时</title>
+        <g id="node-queue" data-node-id="queue" data-node-label="EventQueue&lt;M&gt;" tabindex="0" role="button" aria-label="聚焦EventQueue&lt;M&gt;，Enabled(bool) action, 03 / UI 运行时" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="Enabled(bool) action" data-node-context="03 / UI 运行时">
+          <title>EventQueue&lt;M&gt; · Enabled(bool) action · 03 / UI 运行时</title>
           <rect x="474" y="128" width="112" height="58" rx="6" class="c-mask"/>
           <rect x="474" y="128" width="112" height="58" rx="6" class="c-messagebus" data-animate="node" style="--step:2" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(480 134) scale(0.6875)">
@@ -5252,7 +5252,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="532" y="149" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">EventQueue&lt;M&gt;</text>
-          <text data-detail="context" x="530" y="165" class="t-muted" font-size="7" text-anchor="middle">Enabled(bool)</text>
+          <text data-detail="context" x="530" y="165" class="t-muted" font-size="7" text-anchor="middle">Enabled(bool) action</text>
         </g>
 
         <g id="node-update" data-node-id="update" data-node-label="App::update" tabindex="0" role="button" aria-label="聚焦App::update，enabled / changes, 04 / 应用" aria-pressed="false" data-node-kind="backend" data-node-sublabel="enabled / changes" data-node-context="04 / 应用">
@@ -5266,26 +5266,26 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <text data-detail="context" x="745" y="165" class="t-muted" font-size="7" text-anchor="middle">enabled / changes</text>
         </g>
 
-        <g id="node-view" data-node-id="view" data-node-label="App::view" tabindex="0" role="button" aria-label="聚焦App::view，View&lt;Message&gt;, 04 / 应用" aria-pressed="false" data-node-kind="backend" data-node-sublabel="View&lt;Message&gt;" data-node-context="04 / 应用">
-          <title>App::view · View&lt;Message&gt; · 04 / 应用</title>
+        <g id="node-view" data-node-id="view" data-node-label="App::view" tabindex="0" role="button" aria-label="聚焦App::view，View&lt;Self::Action&gt;, 04 / 应用" aria-pressed="false" data-node-kind="backend" data-node-sublabel="View&lt;Self::Action&gt;" data-node-context="04 / 应用">
+          <title>App::view · View&lt;Self::Action&gt; · 04 / 应用</title>
           <rect x="689" y="356" width="112" height="58" rx="6" class="c-mask"/>
           <rect x="689" y="356" width="112" height="58" rx="6" class="c-backend" data-animate="node" style="--step:4" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(695 362) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="745" y="377" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">App::view</text>
-          <text data-detail="context" x="745" y="393" class="t-muted" font-size="7" text-anchor="middle">View&lt;Message&gt;</text>
+          <text data-detail="context" x="745" y="393" class="t-muted" font-size="7" text-anchor="middle">View&lt;Self::Action&gt;</text>
         </g>
 
-        <g id="node-theme" data-node-id="theme" data-node-label="Theme" tabindex="0" role="button" aria-label="聚焦Theme，颜色、间距与样式, 03 / UI 运行时" aria-pressed="false" data-node-kind="backend" data-node-sublabel="颜色、间距与样式" data-node-context="03 / UI 运行时">
-          <title>Theme · 颜色、间距与样式 · 03 / UI 运行时</title>
+        <g id="node-theme" data-node-id="theme" data-node-label="Theme" tabindex="0" role="button" aria-label="聚焦Theme，字体与颜色值, 03 / UI 运行时" aria-pressed="false" data-node-kind="backend" data-node-sublabel="字体与颜色值" data-node-context="03 / UI 运行时">
+          <title>Theme · 字体与颜色值 · 03 / UI 运行时</title>
           <rect x="474" y="356" width="112" height="58" rx="6" class="c-mask"/>
           <rect x="474" y="356" width="112" height="58" rx="6" class="c-backend" data-animate="node" style="--step:4" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(480 362) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="530" y="377" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">Theme</text>
-          <text data-detail="context" x="530" y="393" class="t-muted" font-size="7" text-anchor="middle">颜色、间距与样式</text>
+          <text data-detail="context" x="530" y="393" class="t-muted" font-size="7" text-anchor="middle">字体与颜色值</text>
         </g>
 
         <g id="node-render" data-node-id="render" data-node-label="校验与协调" tabindex="0" role="button" aria-label="聚焦校验与协调，Ui::render, 05 / 应用视图" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Ui::render" data-node-context="05 / 应用视图">
@@ -5315,9 +5315,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <rect x="190.5" y="136" width="34" height="16" rx="4" class="c-mask"/>
           <text x="207.5" y="147" class="t-edge-default" font-size="8" text-anchor="middle">i32</text>
         </g>
-        <g data-detail="context" data-edge-from="handler" data-edge-to="queue" data-edge-label="Message" data-edge-key="1" data-edge-id="post-message">
-          <rect x="399.35" y="136" width="46.3" height="16" rx="4" class="c-mask"/>
-          <text x="422.5" y="147" class="t-edge-default" font-size="8" text-anchor="middle">Message</text>
+        <g data-detail="context" data-edge-from="handler" data-edge-to="queue" data-edge-label="Enabled(bool)" data-edge-key="1" data-edge-id="post-message">
+          <rect x="384.65" y="136" width="75.7" height="16" rx="4" class="c-mask"/>
+          <text x="422.5" y="147" class="t-edge-default" font-size="8" text-anchor="middle">Enabled(bool)</text>
         </g>
         <g data-detail="context" data-edge-from="queue" data-edge-to="update" data-edge-label="Ui::drain" data-edge-key="2" data-edge-id="drain-message">
           <rect x="609.45" y="136" width="56.1" height="16" rx="4" class="c-mask"/>
@@ -5535,6 +5535,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>回调只投递消息</h3>
         </div>
         <ul>
+          <li>NotificationSettingsAction 是通知设置组件的操作类型。</li>
           <li>原生值 1/0 被映射成 Enabled(true/false)，回调不会直接执行 App::update。</li>
           <li>队列满时丢弃最旧消息，并计入 dropped；它不是无限缓冲区。</li>
           <li>视图写回时抑制程序化值变化事件，避免将自己的更新再次入队。</li>

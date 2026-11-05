@@ -4,10 +4,10 @@ import { createHash } from "node:crypto";
 export const animatedPreviewSource = `use rs_lvgl_ui::prelude::*;
 struct Example;
 impl App for Example {
-    type Msg = ();
+    type Action = ();
     fn update(&mut self, _: ()) {}
     fn view(&self, _: &Theme) -> View<()> {
-        spinner().style(Style::default().width(Size::Px(120)).height(Size::Px(120)))
+        spinner().width(px(120)).height(px(120))
     }
 }
 fn app() -> impl App { Example }

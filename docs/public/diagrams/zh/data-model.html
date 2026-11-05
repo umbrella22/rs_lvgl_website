@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="archify 3.1.0">
   <meta name="archify-reader-contract" content="declared-wide-v1">
-  <title>状态、消息与视图的分工</title>
+  <title>状态、操作与视图的分工</title>
   <script>
     // Resolve the theme before first paint so light-preference users don't
     // see a dark flash. The toolbar script below re-applies with UI state.
@@ -5155,7 +5155,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
            data-preset-badge-blueprint="蓝图 / 修订 01"
            data-preset-badge-editorial="编辑风格 / 现场笔记">
         <div class="pulse-dot"></div>
-        <h1>状态、消息与视图的分工</h1>
+        <h1>状态、操作与视图的分工</h1>
       </div>
     </div>
 
@@ -5164,8 +5164,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     <!-- Main Diagram -->
     <div class="diagram-container" data-detail-level="read"
          data-preset-badge-editorial-plate="ARCHIFY / 图版 04">
-      <svg viewBox="0 0 809 446" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-class-ui="" data-reader-fit="intrinsic-height" data-reader-min-text="7.5">
-        <title id="archify-diagram-title">状态、消息与视图的分工</title>
+      <svg viewBox="0 0 989 446" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-class-ui="" data-reader-fit="intrinsic-height" data-reader-min-text="7.5">
+        <title id="archify-diagram-title">状态、操作与视图的分工</title>
         <desc id="archify-diagram-description">由 Archify 生成的类与接口图。</desc>
         <!-- Definitions -->
         <defs>
@@ -5238,150 +5238,150 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <rect width="100%" height="100%" fill="url(#grid)" />
 
         <!-- Relationships (before types for correct z-order) -->
-        <path data-edge-from="settings" data-edge-to="app" data-edge-label="impl App" data-edge-key="0" data-edge-id="implements" data-class-relationship="realization" data-composition-points="212,87;317,87" d="M 212 87 L 317 87" class="a-default cl-relationship cl-dashed" data-animate="edge" style="--step:0" stroke-width="1.5" marker-end="url(#cl-triangle)"/>
-        <path data-edge-from="settings" data-edge-to="message" data-edge-label="处理消息" data-edge-key="1" data-edge-id="handles" data-class-relationship="dependency" data-composition-points="122,134;122,274" d="M 122 134 L 122 274" class="a-default cl-relationship cl-dashed" data-animate="edge" style="--step:1" stroke-width="1.5" marker-end="url(#cl-open)"/>
-        <path data-edge-from="app" data-edge-to="view" data-edge-label="view()" data-edge-key="2" data-edge-id="describes" data-class-relationship="dependency" data-composition-points="408.5,134;408.5,254" d="M 408.5 134 L 408.5 254" class="a-default cl-relationship cl-dashed" data-animate="edge" style="--step:2" stroke-width="1.5" marker-end="url(#cl-open)"/>
-        <path data-edge-from="ui" data-edge-to="app" data-edge-label="借用应用" data-edge-key="3" data-edge-id="borrows" data-class-relationship="dependency" data-composition-points="605,87;500,87" d="M 605 87 L 500 87" class="a-default cl-relationship cl-dashed" data-animate="edge" style="--step:3" stroke-width="1.5" marker-end="url(#cl-open)"/>
-        <path data-edge-from="ui" data-edge-to="theme" data-edge-label="持有" data-edge-key="4" data-edge-id="owns-theme" data-class-relationship="composition" data-composition-points="695,134;695,299" d="M 695 134 L 695 299" class="a-default cl-relationship" data-animate="edge" style="--step:4" stroke-width="1.5" marker-start="url(#cl-diamond-filled)"/>
-        <path data-edge-from="view" data-edge-to="message" data-edge-label="事件映射" data-edge-key="5" data-edge-id="emits" data-class-relationship="dependency" data-composition-points="317,321;212,321" d="M 317 321 L 212 321" class="a-default cl-relationship cl-dashed" data-animate="edge" style="--step:5" stroke-width="1.5" marker-end="url(#cl-open)"/>
+        <path data-edge-from="settings" data-edge-to="app" data-edge-label="impl App" data-edge-key="0" data-edge-id="implements" data-class-relationship="realization" data-composition-points="272,87;437,87" d="M 272 87 L 437 87" class="a-default cl-relationship cl-dashed" data-animate="edge" style="--step:0" stroke-width="1.5" marker-end="url(#cl-triangle)"/>
+        <path data-edge-from="settings" data-edge-to="message" data-edge-label="处理消息" data-edge-key="1" data-edge-id="handles" data-class-relationship="dependency" data-composition-points="182,134;182,274" d="M 182 134 L 182 274" class="a-default cl-relationship cl-dashed" data-animate="edge" style="--step:1" stroke-width="1.5" marker-end="url(#cl-open)"/>
+        <path data-edge-from="app" data-edge-to="view" data-edge-label="view()" data-edge-key="2" data-edge-id="describes" data-class-relationship="dependency" data-composition-points="558.5,134;558.5,254" d="M 558.5 134 L 558.5 254" class="a-default cl-relationship cl-dashed" data-animate="edge" style="--step:2" stroke-width="1.5" marker-end="url(#cl-open)"/>
+        <path data-edge-from="ui" data-edge-to="app" data-edge-label="借用应用" data-edge-key="3" data-edge-id="borrows" data-class-relationship="dependency" data-composition-points="785,87;680,87" d="M 785 87 L 680 87" class="a-default cl-relationship cl-dashed" data-animate="edge" style="--step:3" stroke-width="1.5" marker-end="url(#cl-open)"/>
+        <path data-edge-from="ui" data-edge-to="theme" data-edge-label="持有" data-edge-key="4" data-edge-id="owns-theme" data-class-relationship="composition" data-composition-points="875,134;875,299" d="M 875 134 L 875 299" class="a-default cl-relationship" data-animate="edge" style="--step:4" stroke-width="1.5" marker-start="url(#cl-diamond-filled)"/>
+        <path data-edge-from="view" data-edge-to="message" data-edge-label="事件映射" data-edge-key="5" data-edge-id="emits" data-class-relationship="dependency" data-composition-points="467,321;332,321" d="M 467 321 L 332 321" class="a-default cl-relationship cl-dashed" data-animate="edge" style="--step:5" stroke-width="1.5" marker-end="url(#cl-open)"/>
 
         <!-- Types -->
         <g id="node-settings" data-node-id="settings" data-node-label="Settings" tabindex="0" role="button" aria-label="聚焦Settings，应用自己持有状态, 记录类型" aria-pressed="false" data-node-kind="record" data-node-sublabel="应用自己持有状态" data-node-context="记录类型" data-class-kind="record" class="cl-hue-database">
           <title>Settings · 应用自己持有状态 · 记录类型</title>
-          <rect x="32" y="40" width="180" height="94" rx="8" class="c-mask"/>
-          <rect x="32" y="40" width="180" height="94" rx="8" class="c-database cl-type" data-animate="node" style="--step:1" stroke-width="1.2"/>
-          <path class="cl-header c-database" stroke="none" d="M 40 40 H 204 A 8 8 0 0 1 212 48 V 84 H 32 V 48 A 8 8 0 0 1 40 40 Z"/>
-          <path class="cl-cap" d="M 44 41.4 H 200" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+          <rect x="92" y="40" width="180" height="94" rx="8" class="c-mask"/>
+          <rect x="92" y="40" width="180" height="94" rx="8" class="c-database cl-type" data-animate="node" style="--step:1" stroke-width="1.2"/>
+          <path class="cl-header c-database" stroke="none" d="M 100 40 H 264 A 8 8 0 0 1 272 48 V 84 H 92 V 48 A 8 8 0 0 1 100 40 Z"/>
+          <path class="cl-cap" d="M 104 41.4 H 260" stroke-width="2.6" stroke-linecap="round" fill="none"/>
           <g aria-hidden="true" class="cl-badge">
-            <rect x="44" y="54" width="16" height="16" rx="4.8" class="cl-badge-chip"/>
-            <text x="52" y="65.5" class="t-database cl-badge-letter" font-size="10" font-weight="800" text-anchor="middle">R</text>
+            <rect x="104" y="54" width="16" height="16" rx="4.8" class="cl-badge-chip"/>
+            <text x="112" y="65.5" class="t-database cl-badge-letter" font-size="10" font-weight="800" text-anchor="middle">R</text>
           </g>
-          <text x="122" y="56" class="t-muted cl-stereotype" font-size="9.5" text-anchor="middle">«record»</text>
-          <text data-node-label="" x="122" y="74" class="t-primary" font-size="13.5" font-weight="700" text-anchor="middle">Settings</text>
+          <text x="182" y="56" class="t-muted cl-stereotype" font-size="9.5" text-anchor="middle">«record»</text>
+          <text data-node-label="" x="182" y="74" class="t-primary" font-size="13.5" font-weight="700" text-anchor="middle">Settings</text>
           <g data-detail="context" data-class-compartment="attributes">
-            <line x1="32" y1="84" x2="212" y2="84" class="cl-rule" stroke-width="1"/>
-            <text data-detail="context" data-class-member="attributes" x="44" y="104" class="t-primary cl-member" font-size="11">enabled</text><text data-detail="context" x="200" y="104" class="t-muted cl-member cl-type-ref" font-size="11" text-anchor="end">bool</text>
-            <rect x="36" y="110" width="172" height="18" rx="4" class="cl-zebra"/><text data-detail="context" data-class-member="attributes" x="44" y="124" class="t-primary cl-member" font-size="11">changes</text><text data-detail="context" x="200" y="124" class="t-muted cl-member cl-type-ref" font-size="11" text-anchor="end">u32</text>
+            <line x1="92" y1="84" x2="272" y2="84" class="cl-rule" stroke-width="1"/>
+            <text data-detail="context" data-class-member="attributes" x="104" y="104" class="t-primary cl-member" font-size="11">enabled</text><text data-detail="context" x="260" y="104" class="t-muted cl-member cl-type-ref" font-size="11" text-anchor="end">bool</text>
+            <rect x="96" y="110" width="172" height="18" rx="4" class="cl-zebra"/><text data-detail="context" data-class-member="attributes" x="104" y="124" class="t-primary cl-member" font-size="11">changes</text><text data-detail="context" x="260" y="124" class="t-muted cl-member cl-type-ref" font-size="11" text-anchor="end">u32</text>
           </g>
         </g>
 
         <g id="node-app" data-node-id="app" data-node-label="App" tabindex="0" role="button" aria-label="聚焦App，应用实现的 Rust trait, 接口" aria-pressed="false" data-node-kind="interface" data-node-sublabel="应用实现的 Rust trait" data-node-context="接口" data-class-kind="interface" class="cl-hue-frontend">
           <title>App · 应用实现的 Rust trait · 接口</title>
-          <rect x="317" y="40" width="183" height="94" rx="8" class="c-mask"/>
-          <rect x="317" y="40" width="183" height="94" rx="8" class="c-frontend cl-type" data-animate="node" style="--step:0" stroke-width="1.2"/>
-          <path class="cl-header c-frontend" stroke="none" d="M 325 40 H 492 A 8 8 0 0 1 500 48 V 84 H 317 V 48 A 8 8 0 0 1 325 40 Z"/>
-          <path class="cl-cap" d="M 329 41.4 H 488" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+          <rect x="437" y="40" width="243" height="94" rx="8" class="c-mask"/>
+          <rect x="437" y="40" width="243" height="94" rx="8" class="c-frontend cl-type" data-animate="node" style="--step:0" stroke-width="1.2"/>
+          <path class="cl-header c-frontend" stroke="none" d="M 445 40 H 672 A 8 8 0 0 1 680 48 V 84 H 437 V 48 A 8 8 0 0 1 445 40 Z"/>
+          <path class="cl-cap" d="M 449 41.4 H 668" stroke-width="2.6" stroke-linecap="round" fill="none"/>
           <g aria-hidden="true" class="cl-badge">
-            <rect x="329" y="54" width="16" height="16" rx="4.8" class="cl-badge-chip"/>
-            <text x="337" y="65.5" class="t-frontend cl-badge-letter" font-size="10" font-weight="800" text-anchor="middle">I</text>
+            <rect x="449" y="54" width="16" height="16" rx="4.8" class="cl-badge-chip"/>
+            <text x="457" y="65.5" class="t-frontend cl-badge-letter" font-size="10" font-weight="800" text-anchor="middle">I</text>
           </g>
-          <text x="408.5" y="56" class="t-muted cl-stereotype" font-size="9.5" text-anchor="middle">«interface»</text>
-          <text data-node-label="" x="408.5" y="74" class="t-primary" font-size="13.5" font-weight="700" text-anchor="middle">App</text>
+          <text x="558.5" y="56" class="t-muted cl-stereotype" font-size="9.5" text-anchor="middle">«interface»</text>
+          <text data-node-label="" x="558.5" y="74" class="t-primary" font-size="13.5" font-weight="700" text-anchor="middle">App</text>
           <g data-detail="context" data-class-compartment="methods">
-            <line x1="317" y1="84" x2="500" y2="84" class="cl-rule" stroke-width="1"/>
-            <text data-detail="context" data-class-member="methods" x="329" y="104" class="t-primary cl-member" font-size="11">update<tspan class="t-muted cl-punct">(</tspan><tspan class="cl-param">Msg</tspan><tspan class="t-muted cl-punct">)</tspan></text>
-            <rect x="321" y="110" width="175" height="18" rx="4" class="cl-zebra"/><text data-detail="context" data-class-member="methods" x="329" y="124" class="t-primary cl-member" font-size="11">view<tspan class="t-muted cl-punct">(</tspan><tspan class="cl-param">&amp;Theme</tspan><tspan class="t-muted cl-punct">)</tspan></text><text data-detail="context" x="488" y="124" class="t-muted cl-member cl-type-ref" font-size="11" text-anchor="end">View&lt;Msg&gt;</text>
+            <line x1="437" y1="84" x2="680" y2="84" class="cl-rule" stroke-width="1"/>
+            <text data-detail="context" data-class-member="methods" x="449" y="104" class="t-primary cl-member" font-size="11">update<tspan class="t-muted cl-punct">(</tspan><tspan class="cl-param">Self</tspan><tspan class="t-muted cl-punct">:</tspan><tspan class="t-muted cl-type-ref">:Action</tspan><tspan class="t-muted cl-punct">)</tspan></text>
+            <rect x="441" y="110" width="235" height="18" rx="4" class="cl-zebra"/><text data-detail="context" data-class-member="methods" x="449" y="124" class="t-primary cl-member" font-size="11">view<tspan class="t-muted cl-punct">(</tspan><tspan class="cl-param">&amp;Theme</tspan><tspan class="t-muted cl-punct">)</tspan></text><text data-detail="context" x="668" y="124" class="t-muted cl-member cl-type-ref" font-size="11" text-anchor="end">View&lt;Self::Action&gt;</text>
           </g>
         </g>
 
         <g id="node-ui" data-node-id="ui" data-node-label="Ui&lt;M&gt;" tabindex="0" role="button" aria-label="聚焦Ui&lt;M&gt;，挂载对象、主题与消息队列, 记录类型" aria-pressed="false" data-node-kind="record" data-node-sublabel="挂载对象、主题与消息队列" data-node-context="记录类型" data-class-kind="record" class="cl-hue-database">
           <title>Ui&lt;M&gt; · 挂载对象、主题与消息队列 · 记录类型</title>
-          <rect x="605" y="40" width="180" height="94" rx="8" class="c-mask"/>
-          <rect x="605" y="40" width="180" height="94" rx="8" class="c-database cl-type" data-animate="node" style="--step:4" stroke-width="1.2"/>
-          <path class="cl-header c-database" stroke="none" d="M 613 40 H 777 A 8 8 0 0 1 785 48 V 84 H 605 V 48 A 8 8 0 0 1 613 40 Z"/>
-          <path class="cl-cap" d="M 617 41.4 H 773" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+          <rect x="785" y="40" width="180" height="94" rx="8" class="c-mask"/>
+          <rect x="785" y="40" width="180" height="94" rx="8" class="c-database cl-type" data-animate="node" style="--step:4" stroke-width="1.2"/>
+          <path class="cl-header c-database" stroke="none" d="M 793 40 H 957 A 8 8 0 0 1 965 48 V 84 H 785 V 48 A 8 8 0 0 1 793 40 Z"/>
+          <path class="cl-cap" d="M 797 41.4 H 953" stroke-width="2.6" stroke-linecap="round" fill="none"/>
           <g aria-hidden="true" class="cl-badge">
-            <rect x="617" y="54" width="16" height="16" rx="4.8" class="cl-badge-chip"/>
-            <text x="625" y="65.5" class="t-database cl-badge-letter" font-size="10" font-weight="800" text-anchor="middle">R</text>
+            <rect x="797" y="54" width="16" height="16" rx="4.8" class="cl-badge-chip"/>
+            <text x="805" y="65.5" class="t-database cl-badge-letter" font-size="10" font-weight="800" text-anchor="middle">R</text>
           </g>
-          <text x="695" y="56" class="t-muted cl-stereotype" font-size="9.5" text-anchor="middle">«record»</text>
-          <text data-node-label="" x="695" y="74" class="t-primary" font-size="13.5" font-weight="700" text-anchor="middle">Ui&lt;M&gt;</text>
+          <text x="875" y="56" class="t-muted cl-stereotype" font-size="9.5" text-anchor="middle">«record»</text>
+          <text data-node-label="" x="875" y="74" class="t-primary" font-size="13.5" font-weight="700" text-anchor="middle">Ui&lt;M&gt;</text>
           <g data-detail="context" data-class-compartment="methods">
-            <line x1="605" y1="84" x2="785" y2="84" class="cl-rule" stroke-width="1"/>
-            <text data-detail="context" data-class-member="methods" x="617" y="104" class="t-primary cl-member" font-size="11">mount<tspan class="t-muted cl-punct">(</tspan><tspan class="cl-param">&amp;A</tspan><tspan class="t-muted cl-punct">)</tspan></text>
-            <rect x="609" y="110" width="172" height="18" rx="4" class="cl-zebra"/><text data-detail="context" data-class-member="methods" x="617" y="124" class="t-primary cl-member" font-size="11">drain<tspan class="t-muted cl-punct">(</tspan><tspan class="cl-param">&amp;mut A</tspan><tspan class="t-muted cl-punct">,</tspan> <tspan class="cl-param">usize</tspan><tspan class="t-muted cl-punct">)</tspan></text>
+            <line x1="785" y1="84" x2="965" y2="84" class="cl-rule" stroke-width="1"/>
+            <text data-detail="context" data-class-member="methods" x="797" y="104" class="t-primary cl-member" font-size="11">mount<tspan class="t-muted cl-punct">(</tspan><tspan class="cl-param">&amp;A</tspan><tspan class="t-muted cl-punct">)</tspan></text>
+            <rect x="789" y="110" width="172" height="18" rx="4" class="cl-zebra"/><text data-detail="context" data-class-member="methods" x="797" y="124" class="t-primary cl-member" font-size="11">drain<tspan class="t-muted cl-punct">(</tspan><tspan class="cl-param">&amp;mut A</tspan><tspan class="t-muted cl-punct">,</tspan> <tspan class="cl-param">usize</tspan><tspan class="t-muted cl-punct">)</tspan></text>
           </g>
         </g>
 
-        <g id="node-message" data-node-id="message" data-node-label="Message" tabindex="0" role="button" aria-label="聚焦Message，输入意图，不是状态容器, 枚举" aria-pressed="false" data-node-kind="enum" data-node-sublabel="输入意图，不是状态容器" data-node-context="枚举" data-class-kind="enum" class="cl-hue-messagebus">
-          <title>Message · 输入意图，不是状态容器 · 枚举</title>
-          <rect x="32" y="274" width="180" height="94" rx="8" class="c-mask"/>
-          <rect x="32" y="274" width="180" height="94" rx="8" class="c-messagebus cl-type" data-animate="node" style="--step:1" stroke-width="1.2"/>
-          <path class="cl-header c-messagebus" stroke="none" d="M 40 274 H 204 A 8 8 0 0 1 212 282 V 318 H 32 V 282 A 8 8 0 0 1 40 274 Z"/>
-          <path class="cl-cap" d="M 44 275.4 H 200" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+        <g id="node-message" data-node-id="message" data-node-label="NotificationSettingsAction" tabindex="0" role="button" aria-label="聚焦NotificationSettingsAction，输入意图，不是状态容器, 枚举" aria-pressed="false" data-node-kind="enum" data-node-sublabel="输入意图，不是状态容器" data-node-context="枚举" data-class-kind="enum" class="cl-hue-messagebus">
+          <title>NotificationSettingsAction · 输入意图，不是状态容器 · 枚举</title>
+          <rect x="32" y="274" width="300" height="94" rx="8" class="c-mask"/>
+          <rect x="32" y="274" width="300" height="94" rx="8" class="c-messagebus cl-type" data-animate="node" style="--step:1" stroke-width="1.2"/>
+          <path class="cl-header c-messagebus" stroke="none" d="M 40 274 H 324 A 8 8 0 0 1 332 282 V 318 H 32 V 282 A 8 8 0 0 1 40 274 Z"/>
+          <path class="cl-cap" d="M 44 275.4 H 320" stroke-width="2.6" stroke-linecap="round" fill="none"/>
           <g aria-hidden="true" class="cl-badge">
             <rect x="44" y="288" width="16" height="16" rx="4.8" class="cl-badge-chip"/>
             <text x="52" y="299.5" class="t-messagebus cl-badge-letter" font-size="10" font-weight="800" text-anchor="middle">E</text>
           </g>
-          <text x="122" y="290" class="t-muted cl-stereotype" font-size="9.5" text-anchor="middle">«enumeration»</text>
-          <text data-node-label="" x="122" y="308" class="t-primary" font-size="13.5" font-weight="700" text-anchor="middle">Message</text>
+          <text x="182" y="290" class="t-muted cl-stereotype" font-size="9.5" text-anchor="middle">«enumeration»</text>
+          <text data-node-label="" x="182" y="308" class="t-primary" font-size="13.5" font-weight="700" text-anchor="middle">NotificationSettingsAction</text>
           <g data-detail="context" data-class-compartment="attributes">
-            <line x1="32" y1="318" x2="212" y2="318" class="cl-rule" stroke-width="1"/>
+            <line x1="32" y1="318" x2="332" y2="318" class="cl-rule" stroke-width="1"/>
             <text data-detail="context" data-class-member="attributes" x="44" y="338" class="t-primary cl-member" font-size="11">Enabled<tspan class="t-muted cl-punct">(</tspan>bool<tspan class="t-muted cl-punct">)</tspan></text>
-            <rect x="36" y="344" width="172" height="18" rx="4" class="cl-zebra"/><text data-detail="context" data-class-member="attributes" x="44" y="358" class="t-primary cl-member" font-size="11">Reset</text>
+            <rect x="36" y="344" width="292" height="18" rx="4" class="cl-zebra"/><text data-detail="context" data-class-member="attributes" x="44" y="358" class="t-primary cl-member" font-size="11">Reset</text>
           </g>
         </g>
 
         <g id="node-view" data-node-id="view" data-node-label="View&lt;M&gt;" tabindex="0" role="button" aria-label="聚焦View&lt;M&gt;，Node&lt;M&gt; 的别名：描述值, 记录类型" aria-pressed="false" data-node-kind="record" data-node-sublabel="Node&lt;M&gt; 的别名：描述值" data-node-context="记录类型" data-class-kind="record" class="cl-hue-database">
           <title>View&lt;M&gt; · Node&lt;M&gt; 的别名：描述值 · 记录类型</title>
-          <rect x="317" y="254" width="183" height="134" rx="8" class="c-mask"/>
-          <rect x="317" y="254" width="183" height="134" rx="8" class="c-database cl-type" data-animate="node" style="--step:2" stroke-width="1.2"/>
-          <path class="cl-header c-database" stroke="none" d="M 325 254 H 492 A 8 8 0 0 1 500 262 V 298 H 317 V 262 A 8 8 0 0 1 325 254 Z"/>
-          <path class="cl-cap" d="M 329 255.4 H 488" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+          <rect x="467" y="254" width="183" height="134" rx="8" class="c-mask"/>
+          <rect x="467" y="254" width="183" height="134" rx="8" class="c-database cl-type" data-animate="node" style="--step:2" stroke-width="1.2"/>
+          <path class="cl-header c-database" stroke="none" d="M 475 254 H 642 A 8 8 0 0 1 650 262 V 298 H 467 V 262 A 8 8 0 0 1 475 254 Z"/>
+          <path class="cl-cap" d="M 479 255.4 H 638" stroke-width="2.6" stroke-linecap="round" fill="none"/>
           <g aria-hidden="true" class="cl-badge">
-            <rect x="329" y="268" width="16" height="16" rx="4.8" class="cl-badge-chip"/>
-            <text x="337" y="279.5" class="t-database cl-badge-letter" font-size="10" font-weight="800" text-anchor="middle">R</text>
+            <rect x="479" y="268" width="16" height="16" rx="4.8" class="cl-badge-chip"/>
+            <text x="487" y="279.5" class="t-database cl-badge-letter" font-size="10" font-weight="800" text-anchor="middle">R</text>
           </g>
-          <text x="408.5" y="270" class="t-muted cl-stereotype" font-size="9.5" text-anchor="middle">«record»</text>
-          <text data-node-label="" x="408.5" y="288" class="t-primary" font-size="13.5" font-weight="700" text-anchor="middle">View&lt;M&gt;</text>
+          <text x="558.5" y="270" class="t-muted cl-stereotype" font-size="9.5" text-anchor="middle">«record»</text>
+          <text data-node-label="" x="558.5" y="288" class="t-primary" font-size="13.5" font-weight="700" text-anchor="middle">View&lt;M&gt;</text>
           <g data-detail="context" data-class-compartment="attributes">
-            <line x1="317" y1="298" x2="500" y2="298" class="cl-rule" stroke-width="1"/>
-            <text data-detail="context" data-class-member="attributes" x="329" y="318" class="t-primary cl-member" font-size="11">key</text><text data-detail="context" x="488" y="318" class="t-muted cl-member cl-type-ref" font-size="11" text-anchor="end">Key</text>
-            <rect x="321" y="324" width="175" height="18" rx="4" class="cl-zebra"/><text data-detail="context" data-class-member="attributes" x="329" y="338" class="t-primary cl-member" font-size="11">kind</text><text data-detail="context" x="488" y="338" class="t-muted cl-member cl-type-ref" font-size="11" text-anchor="end">WidgetKind</text>
-            <text data-detail="context" data-class-member="attributes" x="329" y="358" class="t-primary cl-member" font-size="11">children</text><text data-detail="context" x="488" y="358" class="t-muted cl-member cl-type-ref" font-size="11" text-anchor="end">Vec&lt;Node&lt;M&gt;&gt;</text>
-            <rect x="321" y="364" width="175" height="18" rx="4" class="cl-zebra"/><text data-detail="context" data-class-member="attributes" x="329" y="378" class="t-primary cl-member" font-size="11">handlers</text><text data-detail="context" x="488" y="378" class="t-muted cl-member cl-type-ref" font-size="11" text-anchor="end">HandlerSet&lt;M&gt;</text>
+            <line x1="467" y1="298" x2="650" y2="298" class="cl-rule" stroke-width="1"/>
+            <text data-detail="context" data-class-member="attributes" x="479" y="318" class="t-primary cl-member" font-size="11">key</text><text data-detail="context" x="638" y="318" class="t-muted cl-member cl-type-ref" font-size="11" text-anchor="end">Key</text>
+            <rect x="471" y="324" width="175" height="18" rx="4" class="cl-zebra"/><text data-detail="context" data-class-member="attributes" x="479" y="338" class="t-primary cl-member" font-size="11">kind</text><text data-detail="context" x="638" y="338" class="t-muted cl-member cl-type-ref" font-size="11" text-anchor="end">WidgetKind</text>
+            <text data-detail="context" data-class-member="attributes" x="479" y="358" class="t-primary cl-member" font-size="11">children</text><text data-detail="context" x="638" y="358" class="t-muted cl-member cl-type-ref" font-size="11" text-anchor="end">Vec&lt;Node&lt;M&gt;&gt;</text>
+            <rect x="471" y="364" width="175" height="18" rx="4" class="cl-zebra"/><text data-detail="context" data-class-member="attributes" x="479" y="378" class="t-primary cl-member" font-size="11">handlers</text><text data-detail="context" x="638" y="378" class="t-muted cl-member cl-type-ref" font-size="11" text-anchor="end">HandlerSet&lt;M&gt;</text>
           </g>
         </g>
 
         <g id="node-theme" data-node-id="theme" data-node-label="Theme" tabindex="0" role="button" aria-label="聚焦Theme，由 Ui 持有，view 借用, 记录类型" aria-pressed="false" data-node-kind="record" data-node-sublabel="由 Ui 持有，view 借用" data-node-context="记录类型" data-class-kind="record" class="cl-hue-database">
           <title>Theme · 由 Ui 持有，view 借用 · 记录类型</title>
-          <rect x="605" y="299" width="180" height="44" rx="8" class="c-mask"/>
-          <rect x="605" y="299" width="180" height="44" rx="8" class="c-database cl-type" data-animate="node" style="--step:4" stroke-width="1.2"/>
-          <path class="cl-header c-database" stroke="none" d="M 613 299 H 777 A 8 8 0 0 1 785 307 V 343 H 605 V 307 A 8 8 0 0 1 613 299 Z"/>
-          <path class="cl-cap" d="M 617 300.4 H 773" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+          <rect x="785" y="299" width="180" height="44" rx="8" class="c-mask"/>
+          <rect x="785" y="299" width="180" height="44" rx="8" class="c-database cl-type" data-animate="node" style="--step:4" stroke-width="1.2"/>
+          <path class="cl-header c-database" stroke="none" d="M 793 299 H 957 A 8 8 0 0 1 965 307 V 343 H 785 V 307 A 8 8 0 0 1 793 299 Z"/>
+          <path class="cl-cap" d="M 797 300.4 H 953" stroke-width="2.6" stroke-linecap="round" fill="none"/>
           <g aria-hidden="true" class="cl-badge">
-            <rect x="617" y="313" width="16" height="16" rx="4.8" class="cl-badge-chip"/>
-            <text x="625" y="324.5" class="t-database cl-badge-letter" font-size="10" font-weight="800" text-anchor="middle">R</text>
+            <rect x="797" y="313" width="16" height="16" rx="4.8" class="cl-badge-chip"/>
+            <text x="805" y="324.5" class="t-database cl-badge-letter" font-size="10" font-weight="800" text-anchor="middle">R</text>
           </g>
-          <text x="695" y="315" class="t-muted cl-stereotype" font-size="9.5" text-anchor="middle">«record»</text>
-          <text data-node-label="" x="695" y="333" class="t-primary" font-size="13.5" font-weight="700" text-anchor="middle">Theme</text>
+          <text x="875" y="315" class="t-muted cl-stereotype" font-size="9.5" text-anchor="middle">«record»</text>
+          <text data-node-label="" x="875" y="333" class="t-primary" font-size="13.5" font-weight="700" text-anchor="middle">Theme</text>
 
         </g>
 
         <!-- Relationship labels -->
         <g data-detail="context" data-edge-from="settings" data-edge-to="app" data-edge-label="impl App" data-edge-key="0" data-edge-id="implements" data-class-relationship="realization">
-          <rect x="235.94" y="71" width="57.12" height="14" rx="7" class="c-mask cl-label-box"/>
-          <text x="264.5" y="81" class="t-muted" font-size="9.5" text-anchor="middle">impl App</text>
+          <rect x="325.94" y="71" width="57.12" height="14" rx="7" class="c-mask cl-label-box"/>
+          <text x="354.5" y="81" class="t-muted" font-size="9.5" text-anchor="middle">impl App</text>
         </g>
         <g data-detail="context" data-edge-from="settings" data-edge-to="message" data-edge-label="处理消息" data-edge-key="1" data-edge-id="handles" data-class-relationship="dependency">
-          <rect x="128" y="198" width="57.12" height="14" rx="7" class="c-mask cl-label-box"/>
-          <text x="156.56" y="208" class="t-muted" font-size="9.5" text-anchor="middle">处理消息</text>
+          <rect x="188" y="198" width="57.12" height="14" rx="7" class="c-mask cl-label-box"/>
+          <text x="216.56" y="208" class="t-muted" font-size="9.5" text-anchor="middle">处理消息</text>
         </g>
         <g data-detail="context" data-edge-from="app" data-edge-to="view" data-edge-label="view()" data-edge-key="2" data-edge-id="describes" data-class-relationship="dependency">
-          <rect x="414.5" y="188" width="45.339999999999996" height="14" rx="7" class="c-mask cl-label-box"/>
-          <text x="437.17" y="198" class="t-muted" font-size="9.5" text-anchor="middle">view()</text>
+          <rect x="564.5" y="188" width="45.339999999999996" height="14" rx="7" class="c-mask cl-label-box"/>
+          <text x="587.17" y="198" class="t-muted" font-size="9.5" text-anchor="middle">view()</text>
         </g>
         <g data-detail="context" data-edge-from="ui" data-edge-to="app" data-edge-label="借用应用" data-edge-key="3" data-edge-id="borrows" data-class-relationship="dependency">
-          <rect x="523.94" y="71" width="57.12" height="14" rx="7" class="c-mask cl-label-box"/>
-          <text x="552.5" y="81" class="t-muted" font-size="9.5" text-anchor="middle">借用应用</text>
+          <rect x="703.94" y="71" width="57.12" height="14" rx="7" class="c-mask cl-label-box"/>
+          <text x="732.5" y="81" class="t-muted" font-size="9.5" text-anchor="middle">借用应用</text>
         </g>
         <g data-detail="context" data-edge-from="ui" data-edge-to="theme" data-edge-label="持有" data-edge-key="4" data-edge-id="owns-theme" data-class-relationship="composition">
-          <rect x="701" y="210.5" width="33.56" height="14" rx="7" class="c-mask cl-label-box"/>
-          <text x="717.78" y="220.5" class="t-muted" font-size="9.5" text-anchor="middle">持有</text>
+          <rect x="881" y="210.5" width="33.56" height="14" rx="7" class="c-mask cl-label-box"/>
+          <text x="897.78" y="220.5" class="t-muted" font-size="9.5" text-anchor="middle">持有</text>
         </g>
         <g data-detail="context" data-edge-from="view" data-edge-to="message" data-edge-label="事件映射" data-edge-key="5" data-edge-id="emits" data-class-relationship="dependency">
-          <rect x="235.94" y="305" width="57.12" height="14" rx="7" class="c-mask cl-label-box"/>
-          <text x="264.5" y="315" class="t-muted" font-size="9.5" text-anchor="middle">事件映射</text>
+          <rect x="370.94" y="305" width="57.12" height="14" rx="7" class="c-mask cl-label-box"/>
+          <text x="399.5" y="315" class="t-muted" font-size="9.5" text-anchor="middle">事件映射</text>
         </g>
 
         <!-- Legend -->

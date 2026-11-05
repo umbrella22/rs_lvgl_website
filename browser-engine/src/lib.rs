@@ -10,7 +10,7 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 use value::{Env, Value};
 
 #[derive(Clone)]
-pub struct Message {
+pub struct InterpretedAction {
     handler: Value,
     argument: Option<Value>,
 }
@@ -54,7 +54,7 @@ impl InterpretedApp {
         (location.line.max(1) as u32, location.column as u32 + 1)
     }
 
-    fn render(&self, theme: &Theme) -> Result<View<Message>, Diagnostic> {
+    fn render(&self, theme: &Theme) -> Result<View<InterpretedAction>, Diagnostic> {
         let mut evaluator = Evaluator::new(&self.program);
         let method = &self.program.view;
         let mut env = Env::new();
@@ -71,11 +71,11 @@ impl InterpretedApp {
         ui::materialize(&node, &mut self.keys.borrow_mut(), &mut 512)
     }
 
-    fn dispatch(&mut self, message: Message) -> Result<(), Diagnostic> {
+    fn dispatch(&mut self, action: InterpretedAction) -> Result<(), Diagnostic> {
         let mut evaluator = Evaluator::new(&self.program);
-        let value = match message.argument {
-            Some(argument) => evaluator.closure(message.handler, vec![argument])?,
-            None => message.handler,
+        let value = match action.argument {
+            Some(argument) => evaluator.closure(action.handler, vec![argument])?,
+            None => action.handler,
         };
         let method = &self.program.update;
         let mut env = Env::new();
@@ -90,16 +90,16 @@ impl InterpretedApp {
 }
 
 impl App for InterpretedApp {
-    type Msg = Message;
-    fn update(&mut self, message: Message) {
+    type Action = InterpretedAction;
+    fn update(&mut self, action: InterpretedAction) {
         if self.diagnostic.borrow().is_some() {
             return;
         }
-        if let Err(error) = self.dispatch(message) {
+        if let Err(error) = self.dispatch(action) {
             *self.diagnostic.borrow_mut() = Some(error);
         }
     }
-    fn view(&self, theme: &Theme) -> View<Message> {
+    fn view(&self, theme: &Theme) -> View<InterpretedAction> {
         match self.render(theme) {
             Ok(view) => view,
             Err(error) => {

@@ -164,7 +164,7 @@ python3 scripts/install-skills.py --dest ~/.agents/skills
 python3 scripts/install-skills.py --dest ../application/.agents/skills --skill rs-lvgl-ui
 ```
 
-The installer refuses to overwrite an existing skill folder. CI validates the packaged skills with `scripts/check-skills.py`; see [AI development skills](https://github.com/umbrella22/rs_lvgl/blob/main/docs/ai-skills.md) for discovery and maintenance details.
+The installer refuses to overwrite an existing skill folder. CI validates the packaged skills with `scripts/check-skills.py`; see [AI development skills](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/docs/ai-skills.md) for discovery and maintenance details.
 
 ## Host testing and target limits
 

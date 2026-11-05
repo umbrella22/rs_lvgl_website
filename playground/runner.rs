@@ -3,7 +3,7 @@ include!("view.rs");
 struct PlaygroundApp;
 
 impl rs_lvgl_ui::App for PlaygroundApp {
-    type Msg = ();
+    type Action = ();
 
     fn update(&mut self, _: ()) {}
 

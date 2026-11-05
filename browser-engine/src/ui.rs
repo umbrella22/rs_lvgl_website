@@ -1,7 +1,7 @@
 use crate::{
     program::Diagnostic,
     value::{Result, Value},
-    Message,
+    InterpretedAction,
 };
 use proc_macro2::Span;
 use rs_lvgl_ui::prelude::*;
@@ -38,11 +38,12 @@ const CONSTRUCTORS: &[&str] = &[
     "checkbox", "textarea", "dropdown", "roller", "spinbox", "spinner", "led",
 ];
 const STYLE_METHODS: &[&str] = &[
-    "pad",
-    "pad_left",
-    "pad_right",
-    "pad_top",
-    "pad_bottom",
+    "font",
+    "padding",
+    "padding_left",
+    "padding_right",
+    "padding_top",
+    "padding_bottom",
     "gap",
     "radius",
     "width",
@@ -51,11 +52,11 @@ const STYLE_METHODS: &[&str] = &[
     "max_width",
     "min_height",
     "max_height",
-    "flex_grow",
+    "grow",
     "opacity",
-    "bg_opacity",
-    "bg",
-    "fg",
+    "background_opacity",
+    "background",
+    "text_color",
     "border",
     "offset",
     "hidden",
@@ -86,6 +87,7 @@ const NODE_METHODS: &[&str] = &[
 
 pub fn call_supported(name: &str) -> bool {
     CONSTRUCTORS.contains(&name)
+        || matches!(name, "style" | "px" | "percent" | "content")
         || matches!(
             name,
             "Style::default"
@@ -151,6 +153,19 @@ fn wrong(span: Span, expected: &str) -> Diagnostic {
 }
 
 pub fn call(name: &str, args: Vec<Value>, span: Span) -> Result<Value> {
+    if name == "style" || name == "content" {
+        count(&args, 0, span)?;
+        return Ok(if name == "style" {
+            Value::Style(Box::new(rs_lvgl_ui::style()))
+        } else {
+            Value::Variant("Size::Content".into(), vec![])
+        });
+    }
+    let name = match name {
+        "px" => "Size::Px",
+        "percent" => "Size::Percent",
+        name => name,
+    };
     if CONSTRUCTORS.contains(&name) {
         return Ok(Value::Node(Rc::new(NodeSpec {
             name: name.into(),
@@ -211,7 +226,7 @@ pub fn method(receiver: Value, name: &str, args: Vec<Value>, span: Span) -> Resu
         Value::Style(style) => Ok(Value::Style(Box::new(style_method(
             *style, name, &args, span,
         )?))),
-        Value::Node(node) if NODE_METHODS.contains(&name) => {
+        Value::Node(node) if NODE_METHODS.contains(&name) || STYLE_METHODS.contains(&name) => {
             let mut node = (*node).clone();
             node.modifiers.push((name.into(), args, span));
             Ok(Value::Node(Rc::new(node)))
@@ -236,6 +251,7 @@ fn size(value: &Value, span: Span) -> Result<Size> {
 }
 fn color(value: &Value, span: Span) -> Result<Color> {
     match value {
+        Value::Color(color) => Ok(*color),
         Value::Variant(name, a) if name == "Color::rgb" => Ok(Color::rgb(
             a[0].number(span)?,
             a[1].number(span)?,
@@ -263,11 +279,15 @@ fn style_method(s: Style, name: &str, a: &[Value], span: Span) -> Result<Style> 
         span,
     )?;
     Ok(match name {
-        "pad" => s.pad(a[0].number(span)?),
-        "pad_left" => s.pad_left(a[0].number(span)?),
-        "pad_right" => s.pad_right(a[0].number(span)?),
-        "pad_top" => s.pad_top(a[0].number(span)?),
-        "pad_bottom" => s.pad_bottom(a[0].number(span)?),
+        "font" => match &a[0] {
+            Value::Font(font) => s.font(*font),
+            _ => return Err(wrong(span, "a theme font")),
+        },
+        "padding" => s.padding(a[0].number(span)?),
+        "padding_left" => s.padding_left(a[0].number(span)?),
+        "padding_right" => s.padding_right(a[0].number(span)?),
+        "padding_top" => s.padding_top(a[0].number(span)?),
+        "padding_bottom" => s.padding_bottom(a[0].number(span)?),
         "gap" => s.gap(a[0].number(span)?),
         "radius" => s.radius(a[0].number(span)?),
         "width" => s.width(size(&a[0], span)?),
@@ -276,11 +296,11 @@ fn style_method(s: Style, name: &str, a: &[Value], span: Span) -> Result<Style> 
         "max_width" => s.max_width(size(&a[0], span)?),
         "min_height" => s.min_height(size(&a[0], span)?),
         "max_height" => s.max_height(size(&a[0], span)?),
-        "flex_grow" => s.flex_grow(a[0].number(span)?),
+        "grow" => s.grow(a[0].number(span)?),
         "opacity" => s.opacity(a[0].number(span)?),
-        "bg_opacity" => s.bg_opacity(a[0].number(span)?),
-        "bg" => s.bg(color(&a[0], span)?),
-        "fg" => s.fg(color(&a[0], span)?),
+        "background_opacity" => s.background_opacity(a[0].number(span)?),
+        "background" => s.background(color(&a[0], span)?),
+        "text_color" => s.text_color(color(&a[0], span)?),
         "border" => s.border(color(&a[0], span)?, a[1].number(span)?),
         "offset" => s.offset(a[0].number(span)?, a[1].number(span)?),
         "hidden" => s.hidden(a[0].boolean(span)?),
@@ -355,7 +375,7 @@ fn children(
     span: Span,
     keys: &mut BTreeMap<Identity, u64>,
     budget: &mut usize,
-) -> Result<Vec<View<Message>>> {
+) -> Result<Vec<View<InterpretedAction>>> {
     value
         .sequence(span)?
         .iter()
@@ -367,7 +387,7 @@ fn child(
     span: Span,
     keys: &mut BTreeMap<Identity, u64>,
     budget: &mut usize,
-) -> Result<View<Message>> {
+) -> Result<View<InterpretedAction>> {
     let Value::Node(n) = value else {
         return Err(wrong(span, "View"));
     };
@@ -381,7 +401,7 @@ pub fn materialize(
     node: &NodeSpec,
     keys: &mut BTreeMap<Identity, u64>,
     budget: &mut usize,
-) -> Result<View<Message>> {
+) -> Result<View<InterpretedAction>> {
     let s = node.span;
     let a = &node.args;
     *budget = budget
@@ -423,6 +443,10 @@ pub fn materialize(
     };
     for (name, a, s) in &node.modifiers {
         let s = *s;
+        if STYLE_METHODS.contains(&name.as_str()) {
+            view = view.style(style_method(rs_lvgl_ui::style(), name, a, s)?);
+            continue;
+        }
         count(
             a,
             match name.as_str() {
@@ -473,11 +497,11 @@ pub fn materialize(
                     }
                 }
             }
-            "on_click" => view.on_click(Message {
+            "on_click" => view.on_click(InterpretedAction {
                 handler: a[0].clone(),
                 argument: None,
             }),
-            "on_long_press" => view.on_long_press(Message {
+            "on_long_press" => view.on_long_press(InterpretedAction {
                 handler: a[0].clone(),
                 argument: None,
             }),
@@ -485,18 +509,18 @@ pub fn materialize(
                 if !matches!(a[0], Value::Closure(..)) {
                     return Err(wrong(
                         s,
-                        "a closure, such as |value| Message::Changed(value)",
+                        "a closure, such as |value| BrightnessAction::Level(value)",
                     ));
                 }
                 let handler = a[0].clone();
                 // Native callbacks enqueue data only. Evaluation happens in App::update.
                 if name == "on_value_changed" {
-                    view.on_value_changed(move |value| Message {
+                    view.on_value_changed(move |value| InterpretedAction {
                         handler: handler.clone(),
                         argument: Some(Value::Int(value.into(), Some("i32".into()))),
                     })
                 } else {
-                    view.on_text_changed(move |value| Message {
+                    view.on_text_changed(move |value| InterpretedAction {
                         handler: handler.clone(),
                         argument: Some(Value::Text(value.into())),
                     })

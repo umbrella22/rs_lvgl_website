@@ -1,6 +1,6 @@
 use crate::program::Diagnostic;
 use proc_macro2::Span;
-use rs_lvgl_ui::{Style, Theme};
+use rs_lvgl_ui::{Color, Font, Style, Theme};
 use std::{collections::BTreeMap, rc::Rc};
 use syn::{spanned::Spanned, Type};
 
@@ -18,6 +18,8 @@ pub enum Value {
     Record(String, Env),
     Variant(String, Vec<Value>),
     Theme(Theme),
+    Color(Color),
+    Font(Font),
     Style(Box<Style>),
     Node(Rc<crate::ui::NodeSpec>),
     Closure(Rc<syn::ExprClosure>, Env),
@@ -182,6 +184,8 @@ pub fn typed(value: Value, ty: &Type) -> Result<Value> {
                 ("bool", Value::Bool(_))
                 | ("str" | "String", Value::Text(_))
                 | ("Theme", Value::Theme(_))
+                | ("Color", Value::Color(_))
+                | ("Font", Value::Font(_))
                 | ("Style", Value::Style(_))
                 | ("View", Value::Node(_)) => true,
                 (name, Value::Record(record, _)) => name == record,

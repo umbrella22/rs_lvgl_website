@@ -34,7 +34,7 @@ trait Instance {
 
 struct BrowserApp<A: PreviewApp> {
     app: A,
-    ui: Option<Ui<A::Msg>>,
+    ui: Option<Ui<A::Action>>,
     display: Option<rs_lvgl::Display>,
     mouse: Option<NonNull<rs_lvgl_sys::lv_indev_t>>,
     keyboard: Option<NonNull<rs_lvgl_sys::lv_indev_t>>,
@@ -119,7 +119,10 @@ impl<A: PreviewApp> BrowserApp<A> {
             );
             rs_lvgl_sys::lv_indev_set_user_data(mouse.as_ptr(), data);
             rs_lvgl_sys::lv_indev_set_read_cb(mouse.as_ptr(), Some(read_pointer));
-            rs_lvgl_sys::lv_timer_set_period(rs_lvgl_sys::lv_indev_get_read_timer(mouse.as_ptr()), 1);
+            rs_lvgl_sys::lv_timer_set_period(
+                rs_lvgl_sys::lv_indev_get_read_timer(mouse.as_ptr()),
+                1,
+            );
             let keyboard =
                 NonNull::new(rs_lvgl_sys::lv_indev_create()).ok_or("keyboard allocation failed")?;
             state.keyboard = Some(keyboard);
@@ -129,7 +132,10 @@ impl<A: PreviewApp> BrowserApp<A> {
             );
             rs_lvgl_sys::lv_indev_set_user_data(keyboard.as_ptr(), data);
             rs_lvgl_sys::lv_indev_set_read_cb(keyboard.as_ptr(), Some(read_key));
-            rs_lvgl_sys::lv_timer_set_period(rs_lvgl_sys::lv_indev_get_read_timer(keyboard.as_ptr()), 1);
+            rs_lvgl_sys::lv_timer_set_period(
+                rs_lvgl_sys::lv_indev_get_read_timer(keyboard.as_ptr()),
+                1,
+            );
             ui.bind_input(keyboard).map_err(|e| format!("input:{e}"))?;
         }
         Ok(state)

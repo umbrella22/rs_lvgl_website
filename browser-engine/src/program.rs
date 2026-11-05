@@ -92,6 +92,7 @@ impl Program {
                         | "Size"
                         | "GridTrack"
                         | "Color"
+                        | "Font"
                         | "Align"
                         | "FlexAlign"
                         | "TextAlign"
@@ -180,7 +181,7 @@ impl Program {
                             "Use exactly one App implementation",
                         ));
                     }
-                    let mut message_type = false;
+                    let mut action_type = false;
                     for member in &i.items {
                         match member {
                             ImplItem::Fn(f) if f.sig.ident == "view" && view.is_none() => {
@@ -189,20 +190,24 @@ impl Program {
                             ImplItem::Fn(f) if f.sig.ident == "update" && update.is_none() => {
                                 update = Some(f.clone())
                             }
-                            ImplItem::Type(t) if t.ident == "Msg" && !message_type => {
-                                message_type = true
+                            ImplItem::Type(t) if t.ident == "Action" && !action_type => {
+                                action_type = true
                             }
                             _ => {
                                 return Err(Diagnostic::new(
                                     "unsupported",
                                     member.span(),
-                                    "App supports Msg, view and update in the browser",
+                                    "App supports Action, view and update in the browser",
                                 ))
                             }
                         }
                     }
-                    if !message_type {
-                        return Err(Diagnostic::new("syntax", i.span(), "App requires type Msg"));
+                    if !action_type {
+                        return Err(Diagnostic::new(
+                            "syntax",
+                            i.span(),
+                            "App requires type Action",
+                        ));
                     }
                 }
                 _ => {

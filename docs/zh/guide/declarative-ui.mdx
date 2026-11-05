@@ -20,7 +20,9 @@ import { GuideLinks } from '../../../components/GuideLinks';
 
 把 `gap(16)` 改成 `gap(24)`，点击**运行**，观察控件之间的距离。也可以交换标题和说明在数组中的位置，再运行一次。
 
-构造函数返回 `View<M>` 描述，创建描述时还不会创建原生控件。`M` 是应用的消息类型；没有消息的页面可以使用 `View<()>`。通过 `use rs_lvgl_ui::prelude::*` 导入常用函数和类型。
+本文使用 0.4.0 API。通过 `use rs_lvgl_ui::prelude::*` 导入常用函数和类型。构造函数返回 `View<M>` 描述，创建描述时还不会创建原生控件。
+
+`M` 是泛型参数，作用与常见的 `T` 相同，名字可以自定。`View<NotificationSettingsAction>` 表示这棵视图会产生通知设置组件的操作，例如切换开关或重置。状态字段保存在组件结构体中，处理逻辑写在 `update` 方法中；操作枚举只描述输入。没有操作的视图可以使用 `View<()>`。
 
 ## 调整子节点的顺序
 
@@ -34,13 +36,13 @@ import { GuideLinks } from '../../../components/GuideLinks';
 use rs_lvgl_ui::prelude::*;
 
 fn page_title<M>(text: &str, theme: &Theme) -> View<M> {
-    label(text).style(Style::title(theme))
+    label(text).font(theme.title_font).text_color(theme.text)
 }
 
 fn settings_view(theme: &Theme) -> View<()> {
     let content = label("Notification preferences");
     let title = page_title("Settings", theme);
-    column([title, content]).style(Style::default().gap(12))
+    column([title, content]).gap(12)
 }
 ```
 
@@ -50,18 +52,18 @@ fn settings_view(theme: &Theme) -> View<()> {
 
 ## 设置尺寸、间距与对齐
 
-通过 `.style(...)` 设置布局。常用属性包括：
+直接在视图后链式设置布局和样式属性。常用属性包括：
 
 | 属性 | 用途 |
 | --- | --- |
 | `.gap(12)` | 相邻子节点之间留出 12 像素 |
-| `.pad(16)` | 内容与容器边缘之间留出 16 像素 |
-| `.width(Size::Percent(100))` | 占满父节点可用宽度 |
-| `.height(Size::Px(48))` | 使用固定高度 |
-| `.flex_grow(1)` | 分配 flex 容器中的剩余空间 |
+| `.padding(16)` | 内容与容器边缘之间留出 16 像素 |
+| `.width(percent(100))` | 占满父节点可用宽度 |
+| `.height(px(48))` | 使用固定高度 |
+| `.grow(1)` | 分配 flex 容器中的剩余空间 |
 | `.flex_align(main, cross)` | 设置子节点在主轴与交叉轴上的对齐方式 |
 
-`Size::Content` 随内容确定尺寸。`.align(...)` 设置节点在父节点中的位置，`.flex_align(...)` 设置容器里的子节点排布。
+`content()` 随内容确定尺寸。`.align(...)` 设置节点在父节点中的位置，`.flex_align(...)` 设置容器里的子节点排布。
 
 ## 用网格指定位置
 
@@ -73,11 +75,31 @@ fn settings_view(theme: &Theme) -> View<()> {
 
 ## 调整控件外观
 
-样式叠加在控件的默认外观上。例如，`Style::screen(theme).pad(16)` 设置屏幕样式和内边距，其他未设置的属性继续使用 LVGL 默认值或从父节点继承。
+构造函数自动初始化视图内的样式描述，可以直接写 `label("Settings").font(theme.title_font).text_color(theme.text)`。这里的字体和文字颜色明确来自当前主题。`Ui::set_theme` 请求下一次更新重新生成视图，届时才会读取新主题；提前保存的样式值不会自动跟随主题。
 
-`Style::default()` 不设置任何字段，完全继承 LVGL 控件类的默认值。`Style::neutral()` 清除不可继承的布局与外观字段；普通容器和标签从透明、无边框开始，文字颜色、字体和文本对齐仍保持未设置，以便从父节点继承。主题预设包括 `Style::title`、`body`、`muted`、`surface`、`accent` 和 `screen`。`Style::accent` 同时清除原生阴影，使扁平操作按钮适配深色背景。普通按钮则保留原生主题的表面与阴影，除非视图显式覆盖。
+根容器可统一设置 `.font(theme.body_font).text_color(theme.text)`，让没有单独指定的正文继承主题，在深浅主题下都保持可读。
 
-交互状态使用局部样式选择器：`.state_style(State::PRESSED, ...)` 与 `.state_style(State::FOCUSED, ...)` 在 LVGL 持有对应状态时切换。它们不会入队消息，也不会触发渲染。
+重复使用的属性可以提取成 `style()` 补丁，再通过 `.style(patch)` 合并：
+
+```rust
+use rs_lvgl_ui::prelude::*;
+
+fn settings_view(theme: &Theme) -> View<()> {
+    let panel = style().background(theme.surface).padding(16).gap(12);
+    column([label("Settings").font(theme.title_font).text_color(theme.text)])
+        .style(panel)
+        .padding_top(0)
+        .width(percent(100))
+}
+```
+
+同一属性按调用顺序覆盖，最后显式设置的值生效，包括 `0` 和 `false`。补丁没有设置的字段保留原值或继承关系。`background` 同时把背景透明度设为 255，需要半透明时在它之后调用 `.background_opacity(...)`。
+
+`style()` 返回字段均未设置的补丁；`Style::default()` 是同样的 Rust 值初始化原语，普通视图无需显式调用。`Style::neutral()` 显式清除不可继承的布局与外观字段，容器和标签以此为基础，文字颜色、字体和对齐继续继承。`Style::screen(theme)`、`surface(theme)` 和 `accent(theme)` 可用于主题屏幕、面板和强调按钮；平铺属性仍可继续覆盖它们。强调按钮预设清除原生阴影，普通按钮保留原生主题的表面与阴影。
+
+这些修饰器修改已有的样式值，每设置一个属性不会额外分配堆内存。子节点集合、拥有所有权的文本、事件闭包和运行时协调仍可能分配；原生样式资源由运行时随挂载、更新和卸载管理。完整的内存与生命周期边界见[挂载与更新](./ui-runtime.mdx)。
+
+交互状态使用 `.state_style(State::PRESSED, style().opacity(200))` 或对应的 `State::FOCUSED` 选择器，在 LVGL 持有对应状态时切换，不会入队操作或触发视图重建。
 
 ## 为列表项设置稳定的键
 
@@ -96,11 +118,11 @@ fn settings_view(theme: &Theme) -> View<()> {
 键把列表更新限制在局部：
 
 ```rust
-// 片段中的 Msg::Remove(u64) 是应用消息。
+// DeviceListAction::Remove(u64) describes an action of the device list.
 column(items.iter().map(|item| {
     row([
-        label(item.name.clone()).style(Style::default().flex_grow(1)),
-        button("Remove").on_click(Msg::Remove(item.id)),
+        label(item.name.clone()).grow(1),
+        button("Remove").on_click(DeviceListAction::Remove(item.id)),
     ])
     .key(Key::Id(item.id))
 }))
@@ -117,7 +139,7 @@ column(items.iter().map(|item| {
 
 ## 让视图读取应用状态
 
-标题文字、开关值或列表数据变化时，应用通过 `App::view` 返回新的 `View<Msg>`。`View<M>` 是 `Node<M>` 的别名，辅助函数与内置构造函数返回同一种类型。
+标题文字、开关值或列表数据变化时，应用通过 `App::view` 返回新的 `View<DeviceListAction>`。`View<M>` 是 `Node<M>` 的别名，辅助函数与内置构造函数返回同一种类型。
 
 <ArchifyDiagram id="data-model" />
 

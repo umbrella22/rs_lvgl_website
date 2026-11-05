@@ -28,11 +28,42 @@ fn all_documentation_examples_evaluate() {
         .render(&Theme::light())
         .unwrap();
 }
+
+#[test]
+fn current_action_and_style_syntax_preserves_type_and_range_diagnostics() {
+    let source = screen("let shared = style().padding(12); column([label(\"Current API\").font(theme.body_font).text_color(theme.text)]).style(shared).padding_left(0).width(percent(100)).height(content()).background(theme.background)");
+    let app = InterpretedApp::new(&source).unwrap();
+    app.render(&Theme::light()).unwrap();
+    app.render(&Theme::dark()).unwrap();
+    assert_eq!(
+        error(&SWITCH.replace("type Action", "type Msg")).kind,
+        "unsupported"
+    );
+    for expression in [
+        "label(\"x\").pad(12)",
+        "label(\"x\").style(style().fg(theme.text))",
+    ] {
+        assert_eq!(error(&screen(expression)).kind, "unsupported");
+    }
+    assert_eq!(error(&screen("label(\"x\").width(120)")).kind, "type");
+    assert_eq!(
+        error(&screen("label(\"x\").width(percent(256))")).kind,
+        "range"
+    );
+    assert_eq!(error(&screen("label(\"x\").font(theme.text)")).kind, "type");
+    assert_eq!(
+        error(&screen("label(\"x\").text_color(theme.unknown)")).kind,
+        "name"
+    );
+}
 #[test]
 fn messages_update_state_and_overflow_is_transactional() {
     let mut app = InterpretedApp::new(SWITCH).unwrap();
-    app.dispatch(Message {
-        handler: Value::Variant("Message::Enabled".into(), vec![Value::Bool(true)]),
+    app.dispatch(InterpretedAction {
+        handler: Value::Variant(
+            "NotificationSettingsAction::Enabled".into(),
+            vec![Value::Bool(true)],
+        ),
         argument: None,
     })
     .unwrap();
@@ -51,8 +82,11 @@ fn messages_update_state_and_overflow_is_transactional() {
     let source = SWITCH.replace("changes: 0", "changes: 4294967295");
     let mut app = InterpretedApp::new(&source).unwrap();
     let error = app
-        .dispatch(Message {
-            handler: Value::Variant("Message::Enabled".into(), vec![Value::Bool(true)]),
+        .dispatch(InterpretedAction {
+            handler: Value::Variant(
+                "NotificationSettingsAction::Enabled".into(),
+                vec![Value::Bool(true)],
+            ),
             argument: None,
         })
         .err()
@@ -81,8 +115,8 @@ fn dead_branches_are_validated() {
 #[test]
 fn errors_have_source_locations_and_checked_boundaries() {
     for expression in [
-        "label(\"x\").style(Style::default().width(Size::Px(40000)))",
-        "label(\"x\").style(Style::default().opacity(256))",
+        "label(\"x\").width(px(40000))",
+        "label(\"x\").opacity(256)",
         "label(\"x\").grid_cell(65536,0,1,1)",
         "label(\"x\").key(Key::Id(-1))",
         "slider(0,100,2147483648)",

@@ -12,7 +12,7 @@ thread_local! {
 fn app() -> InterpretedApp {
     PREPARED.with_borrow_mut(|slot| slot.take()).unwrap_or_else(|| {
         // Invalid bridge use is reported, never panics across the exported ABI.
-        let mut fallback = InterpretedApp::new("struct Empty; impl rs_lvgl_ui::App for Empty { type Msg = (); fn update(&mut self, _: ()) {} fn view(&self, theme: &rs_lvgl_ui::Theme) -> rs_lvgl_ui::View<()> { obj() } } fn app() -> impl rs_lvgl_ui::App { Empty }").expect("fixed fallback");
+        let mut fallback = InterpretedApp::new("struct Empty; impl rs_lvgl_ui::App for Empty { type Action = (); fn update(&mut self, _: ()) {} fn view(&self, theme: &rs_lvgl_ui::Theme) -> rs_lvgl_ui::View<()> { obj() } } fn app() -> impl rs_lvgl_ui::App { Empty }").expect("fixed fallback");
         fallback.diagnostic = ERROR.with(Clone::clone);
         *fallback.diagnostic.borrow_mut() = Some(Diagnostic::new("runtime", proc_macro2::Span::call_site(), "Load source before initializing the preview"));
         fallback

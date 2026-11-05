@@ -15,17 +15,19 @@ All seven documentation examples are editable. Start with text, spacing and dime
 
 | Area | Browser support |
 | --- | --- |
-| Application | One `impl App` with `type Msg`, `update` and `view`; `fn app() -> impl App` returns initial state |
+| Application | One `impl App` with `type Action`, `update` and `view`; `fn app() -> impl App` returns initial state |
 | Data | Named-field and unit structs, unit or tuple message variants; booleans, integers, strings, arrays and tuples |
 | Expressions | `let`, ordinary helper functions, closures, `if`, `match` without guards, array indexing, scalar comparisons and arithmetic, assignments |
 | Lists | Arrays with `.into_iter().map(...)`; named child views; `.child(...)` and `.children(...)` |
 | Text | `format!("{}", value)`, `format!("{name}")`, `.to_string()`; format specifiers are not supported |
-| Layout | `obj`, `row`, `column`, `grid`; `Size`, `GridTrack`, `grid_cell` and stable `Key` values |
+| Layout | `obj`, `row`, `column`, `grid`; `px`, `percent`, `content`, `GridTrack`, `grid_cell` and stable `Key` values |
 | Widgets | `label`, `button`, `switch`, `slider`, `bar`, `arc`, `checkbox`, `textarea`, `dropdown`, `roller`, `spinbox`, `spinner`, `led` |
 | Input | `on_click`, `on_long_press`, `on_value_changed`, `on_text_changed`; text areas support `placeholder`, `password`, `multiline`, `keyboard_id` |
-| Style | The six `Style` theme presets, `default`, `neutral`; padding, gaps, sizes and min/max sizes, colors, borders, radius, opacity, alignment, offsets, hiding and disabling |
+| Style | Direct modifiers for padding, gaps, sizes and min/max sizes, colors, fonts, borders, radius, opacity, alignment, offsets, hiding and disabling; reusable `style()` patches and `Style` presets |
 
 Import `use rs_lvgl_ui::prelude::*;` and follow the function syntax in the examples. Use `Color::rgb(240, 120, 60)` for colors. Integers support `i8` through `i64` and `u8` through `u64`; `isize` and `usize` use 32 bits. A value outside its declared field type or UI parameter range reports an error instead of being truncated.
+
+`type Action = BrightnessAction` selects this component's action type. The left-hand `Action` belongs to the `App` interface; the component chooses the type on the right. Use `.width(px(240))` for dimensions and read fonts and colors directly from `theme.title_font` and `theme.text`.
 
 For example, keep a slider value in state and write it back when a message arrives:
 
@@ -37,29 +39,29 @@ struct Brightness {
 }
 
 #[derive(Clone)]
-enum Message {
+enum BrightnessAction {
     Level(i32),
 }
 
 impl App for Brightness {
-    type Msg = Message;
+    type Action = BrightnessAction;
 
-    fn update(&mut self, message: Message) {
-        match message {
-            Message::Level(value) => {
+    fn update(&mut self, action: BrightnessAction) {
+        match action {
+            BrightnessAction::Level(value) => {
                 self.level = value;
             }
         }
     }
 
-    fn view(&self, theme: &Theme) -> View<Message> {
+    fn view(&self, theme: &Theme) -> View<BrightnessAction> {
         column([
             label(format!("Brightness: {}", self.level)),
             slider(0, 100, self.level)
-                .on_value_changed(|value| Message::Level(value))
-                .style(Style::default().width(Size::Px(240))),
+                .on_value_changed(|value| BrightnessAction::Level(value))
+                .width(px(240)),
         ])
-        .style(Style::screen(theme).pad(32).gap(24))
+        .style(Style::screen(theme)).font(theme.body_font).text_color(theme.text).padding(32).gap(24)
     }
 }
 

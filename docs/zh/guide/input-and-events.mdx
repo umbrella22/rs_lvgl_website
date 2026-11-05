@@ -1,6 +1,6 @@
 ---
 title: 响应输入
-description: 让开关和按钮发送消息，在 App::update 中保存状态，再通过 view 更新界面；继续接入键盘、焦点与编码器。
+description: 让开关和按钮派发组件操作，在 App::update 中保存状态，再通过 view 更新界面；继续接入键盘、焦点与编码器。
 ---
 
 import { AppExample } from '../../../components/AppExample';
@@ -22,13 +22,15 @@ import { GuideLinks } from '../../../components/GuideLinks';
 
 ## 把输入保存到状态
 
+`NotificationSettingsAction` 是通知设置组件自己的操作枚举，`Enabled(bool)` 和 `Reset` 描述输入。`enabled`、`changes` 是状态字段，`update` 方法实现状态变更。`type Action = NotificationSettingsAction` 将该类型接到 `App` 接口，右侧名称可以按组件自定。
+
 开关的交互分为三步：
 
-1. `switch(self.enabled)` 用当前状态描述开关；`on_value_changed` 把原生的 `1` 或 `0` 转为 `Message::Enabled(value != 0)`。
+1. `switch(self.enabled)` 用当前状态描述开关；`on_value_changed` 把原生的 `1` 或 `0` 转为 `NotificationSettingsAction::Enabled(value != 0)`。
 2. `update` 收到消息，保存 `enabled` 并累加 `changes`。
 3. `view` 再次读取两个字段，更新开关、文字和计数。
 
-按钮不需要读取数值，`button("Reset").on_click(Message::Reset)` 直接发送重置消息即可。消息类型实现 `Clone + 'static`，因为点击处理器会保存消息，并在每次点击时克隆它。
+按钮不需要读取数值，`button("Reset").on_click(NotificationSettingsAction::Reset)` 直接发送重置消息即可。消息类型实现 `Clone + 'static`，因为点击处理器会保存消息，并在每次点击时克隆它。
 
 <ArchifyDiagram id="message-flow" />
 
@@ -45,7 +47,7 @@ import { GuideLinks } from '../../../components/GuideLinks';
 
 ## 在循环中处理消息
 
-`Ui` 持有唯一一条有界队列，供视图、覆盖层和所有处理器槽位共享。`Ui::new` 使用 `DEFAULT_QUEUE_CAPACITY`（64），`Ui::with_capacity` 可指定其他容量。队列已满时，`post` 移除最旧的消息并增加丢弃计数。
+`Ui` 持有唯一一条有界队列，供视图、覆盖层和所有处理器槽位共享。`Ui::new` 使用 `DEFAULT_QUEUE_CAPACITY`（64），`Ui::with_capacity` 可指定其他容量。默认队列策略下，队列已满时 `post` 移除最旧的消息并增加丢弃计数。
 
 `Ui::post(message)` 供平台代码投递消息；原生回调内部也使用同一条队列。两条路径都不会调用 `App::update`，只有应用主动排空时才会更新：
 
@@ -54,7 +56,7 @@ ui.timer_handler(); // 派发原生计时器与输入回调
 let stats = ui.drain(&mut app, 32)?;
 ```
 
-该片段只包含帧循环中的两条调用；[input 示例](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/input.rs) 提供显示、键盘与循环。
+该片段只包含帧循环中的两条调用；[input 示例](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/input.rs) 提供显示、键盘与循环。
 
 `drain(&mut app, max_messages)` 最多处理指定数量的消息，逐条调用 `App::update`，然后为整个批次调用一次 `App::view` 并协调一次。它返回 `DrainStats`：
 
@@ -72,7 +74,7 @@ let stats = ui.drain(&mut app, 32)?;
 
 | 构建器 | 消息负载 | 投递条件 |
 | --- | --- | --- |
-| `on_click(msg)` | 每次事件克隆的 `M` | 节点上的 `LV_EVENT_CLICKED` |
+| `on_click(action)` | 每次事件克隆的 `M` | 节点上的 `LV_EVENT_CLICKED` |
 | `on_value_changed(f)` | 变化后从原生控件读取的 `i32` | `VALUE_CHANGED`；具体取值见下 |
 | `on_text_changed(f)` | 仅在调用期间借用的 `&str` | 文本框上的 `VALUE_CHANGED`；需要保留时复制 |
 | `on_key(f)` | 完整的 `u32` LVGL 键码 | `LV_EVENT_KEY`；`NEXT`/`PREV` 会被焦点导航消费 |
@@ -80,7 +82,7 @@ let stats = ui.drain(&mut app, 32)?;
 | `on_gesture(f)` | `GestureDirection` | 单个方向手势事件；通用 `Gesture` 事件单独投递 |
 | `on_scroll(f)` | 以像素计的 `ScrollOffset { x, y }` | 连续 `SCROLL`，包括程序化滚动 |
 | `on_pointer(f)` | 以显示像素计的 `PointerEvent { event, x, y }` | 原生指针按下、持续按下、点击、长按与释放事件 |
-| `on_long_press(msg)` | 克隆的 `M` | `LONG_PRESSED`，不含 `LONG_PRESSED_REPEAT` |
+| `on_long_press(action)` | 克隆的 `M` | `LONG_PRESSED`，不含 `LONG_PRESSED_REPEAT` |
 | `on_event(f)` | `&Event -> Option<M>` | 目标是本节点的事件 |
 | `on_bubbled_event(f)` | `&InputEvent -> Option<M>` | 从后代冒泡上来的事件 |
 
@@ -144,7 +146,7 @@ ui.focus(Key::Named("save"))?;
 
 ## 可运行示例
 
-[input.rs](https://github.com/umbrella22/rs_lvgl/blob/main/rs_lvgl_ui/examples/input.rs) 创建 SDL 窗口、鼠标与键盘，挂载两个按钮和一个可滚动列，把键盘绑定到 UI，聚焦 `Key::Named("add")`，并在帧循环中排空指针点击、键码与滚动偏移。
+[input.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.4.0/rs_lvgl_ui/examples/input.rs) 创建 SDL 窗口、鼠标与键盘，挂载两个按钮和一个可滚动列，把键盘绑定到 UI，聚焦 `Key::Named("add")`，并在帧循环中排空指针点击、键码与滚动偏移。
 
 ```sh
 cargo run -p rs_lvgl_ui --example input --features simulator,input-keypad
