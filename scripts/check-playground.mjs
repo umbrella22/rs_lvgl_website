@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { NativeRenderer, repositoryRoot, websiteRoot, sha256 } from './playground-native.mjs';
+import { NativeRenderer, decodeNativePng, repositoryRoot, websiteRoot, sha256 } from './playground-native.mjs';
 import { nativeIdentity } from './render-examples.mjs';
 
 const args = process.argv.slice(2);
@@ -14,6 +14,27 @@ const manifest = JSON.parse(await fs.readFile(path.join(websiteRoot, 'playground
 const records = [];
 const identity = await nativeIdentity();
 assert.equal(identity, manifest.nativeIdentity, 'Render the example manifest before native acceptance.');
+function pixelIdentity(png) {
+  const { width, height, rgba } = decodeNativePng(png);
+  return { width, height, rgbaHash: sha256(rgba) };
+}
+const figures = new Map();
+for (const example of manifest.examples) {
+  const png = await fs.readFile(path.join(websiteRoot, 'docs/public/playground', `${example.id}.png`));
+  assert.equal(sha256(png), example.imageHash, `${example.id}: stored figure differs from its receipt`);
+  const pixels = pixelIdentity(png);
+  assert.equal(pixels.width, example.width);
+  assert.equal(pixels.height, example.height);
+  figures.set(example.id, pixels);
+}
+function renderedPixels(result) {
+  const png = Buffer.from(result.image.split(',')[1], 'base64');
+  assert.equal(sha256(png), result.imageHash);
+  const pixels = pixelIdentity(png);
+  assert.equal(pixels.width, result.width);
+  assert.equal(pixels.height, result.height);
+  return pixels;
+}
 const renderer = new NativeRenderer();
 try {
   for (let pass = 1; pass <= passes; pass += 1) {
@@ -23,14 +44,14 @@ try {
       const result = await renderer.render({ source: example.source });
       assert.equal(result.ok, true, JSON.stringify(result));
       assert.equal(result.sourceHash, sha256(example.source));
-      assert.equal(result.imageHash, example.imageHash, `${example.id} differs from its native documentation figure`);
+      assert.deepEqual(renderedPixels(result), figures.get(example.id), `${example.id} differs from its native documentation figure`);
       cases.push(`${example.id}:matching-native-image`);
     }
     const original = manifest.examples[0].source;
     const changed = original.replace('Hello, LVGL', 'Edited Rust, real LVGL');
     const edited = await renderer.render({ source: changed });
     assert.equal(edited.ok, true, JSON.stringify(edited));
-    assert.notEqual(edited.imageHash, manifest.examples[0].imageHash);
+    assert.notDeepEqual(renderedPixels(edited), figures.get(manifest.examples[0].id));
     assert.equal(edited.sourceHash, sha256(changed));
     cases.push('edit-updates-native-pixels');
     const compile = await renderer.render({ source: original.replace('label("Hello, LVGL")', 'missing_widget("Hello, LVGL")') });
@@ -61,13 +82,13 @@ try {
     const [cancelled, recovered] = await Promise.all([old, newest]);
     assert.equal(cancelled.kind, 'cancelled');
     assert.equal(recovered.ok, true, JSON.stringify(recovered));
-    assert.equal(recovered.imageHash, manifest.examples[0].imageHash);
+    assert.deepEqual(renderedPixels(recovered), figures.get(manifest.examples[0].id));
     cases.push('superseded-request-and-recovery');
     const second = new NativeRenderer();
     try {
       const [one, two] = await Promise.all([renderer.render({ source: original }), second.render({ source: changed })]);
-      assert.equal(one.imageHash, manifest.examples[0].imageHash);
-      assert.equal(two.imageHash, edited.imageHash);
+      assert.deepEqual(renderedPixels(one), figures.get(manifest.examples[0].id));
+      assert.deepEqual(renderedPixels(two), renderedPixels(edited));
       assert.notEqual(one.sourceHash, two.sourceHash);
       cases.push('concurrent-consumers-output-isolation');
     } finally { await second.close(); }

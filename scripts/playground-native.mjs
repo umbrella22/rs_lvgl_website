@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { deflateSync } from "node:zlib";
+import { deflateSync, inflateSync } from "node:zlib";
 
 import { websiteRoot, repositoryRoot, libraryRoot } from "./paths.mjs";
 export { websiteRoot, repositoryRoot, libraryRoot } from "./paths.mjs";
@@ -116,17 +116,22 @@ function pngChunk(type, bytes) {
   return result;
 }
 
-export function encodePng(width, height, rgba) {
+function nativeRgbaLength(width, height) {
   if (
     !Number.isInteger(width) ||
     !Number.isInteger(height) ||
     width < 1 ||
     height < 1 ||
-    width * height > 4_000_000 ||
-    rgba.length !== width * height * 4
+    width * height > 4_000_000
   ) {
     throw new Error("Invalid native RGBA dimensions or byte length.");
   }
+  return width * height * 4;
+}
+
+export function encodePng(width, height, rgba) {
+  if (rgba.length !== nativeRgbaLength(width, height))
+    throw new Error("Invalid native RGBA dimensions or byte length.");
   const header = Buffer.alloc(13);
   header.writeUInt32BE(width, 0);
   header.writeUInt32BE(height, 4);
@@ -142,6 +147,47 @@ export function encodePng(width, height, rgba) {
     pngChunk("IDAT", deflateSync(rows)),
     pngChunk("IEND", Buffer.alloc(0)),
   ]);
+}
+
+// This reads the RGBA8, unfiltered, single-IDAT format emitted by encodePng.
+// Lossless compression bytes may differ between supported Node/zlib versions.
+export function decodeNativePng(png) {
+  if (!png.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])))
+    throw new Error("Invalid native PNG signature.");
+  let offset = 8;
+  function chunk(expected) {
+    if (offset + 12 > png.length)
+      throw new Error("Truncated native PNG chunk.");
+    const length = png.readUInt32BE(offset);
+    const end = offset + length + 12;
+    if (end > png.length || png.toString("ascii", offset + 4, offset + 8) !== expected)
+      throw new Error("Invalid native PNG chunk.");
+    if (crc32(png.subarray(offset + 4, end - 4)) !== png.readUInt32BE(end - 4))
+      throw new Error("Invalid native PNG checksum.");
+    const data = png.subarray(offset + 8, end - 4);
+    offset = end;
+    return data;
+  }
+  const header = chunk("IHDR");
+  if (header.length !== 13 || !header.subarray(8).equals(Buffer.from([8, 6, 0, 0, 0])))
+    throw new Error("Unsupported native PNG format.");
+  const width = header.readUInt32BE(0);
+  const height = header.readUInt32BE(4);
+  const length = nativeRgbaLength(width, height);
+  const compressed = chunk("IDAT");
+  if (chunk("IEND").length !== 0 || offset !== png.length)
+    throw new Error("Invalid native PNG ending.");
+  const stride = width * 4;
+  const rows = inflateSync(compressed, { maxOutputLength: length + height });
+  if (rows.length !== length + height)
+    throw new Error("Invalid native PNG scanline length.");
+  const rgba = Buffer.alloc(length);
+  for (let y = 0; y < height; y += 1) {
+    const row = y * (stride + 1);
+    if (rows[row] !== 0) throw new Error("Unsupported native PNG filter.");
+    rows.copy(rgba, y * stride, row + 1, row + stride + 1);
+  }
+  return { width, height, rgba };
 }
 
 export function validateRenderRequest(value) {

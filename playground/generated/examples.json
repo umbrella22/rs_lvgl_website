@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nativeIdentity": "877b354f86c09cbcedb01db8d3c4aab4a0b677552493e20e58f2f0bd42a208bd",
+  "nativeIdentity": "b56ec93670e6b4be87c7cbb9576616c52bbad9b8f8544d1fe0180c2254143cc0",
   "renderer": "rs_lvgl_ui::Ui::snapshot / LVGL 9.6",
   "viewport": {
     "width": 640,

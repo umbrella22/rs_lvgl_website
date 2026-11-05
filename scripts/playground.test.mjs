@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { inflateSync } from 'node:zlib';
-import { encodePng, runProcess, validateRenderRequest } from './playground-native.mjs';
+import { decodeNativePng, encodePng, runProcess, sha256, validateRenderRequest } from './playground-native.mjs';
 import { startServer } from './playground-server.mjs';
 
 test('PNG preserves RGBA channel values and scanline boundaries', () => {
@@ -17,6 +17,22 @@ test('PNG preserves RGBA channel values and scanline boundaries', () => {
   assert.equal(png.subarray(37, 41).toString(), 'IDAT');
   assert.deepEqual(inflateSync(png.subarray(41, 41 + length)), Buffer.from([0, 255, 0, 0, 255, 0, 0, 128, 255, 64]));
   assert.throws(() => encodePng(2, 2, pixels), /byte length/);
+});
+
+test('native pixel identity accepts equivalent PNG compression and detects changed RGBA', () => {
+  // Independent zlib level-0 and level-9 fixtures encode the same two pixels.
+  const stored = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAACCAYAAACZgbYnAAAAFUlEQVR4AQEKAPX/AP8AAP8AAID/QBK5A76iVEkSAAAAAElFTkSuQmCC', 'base64');
+  const compressed = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAACCAYAAACZgbYnAAAAEElEQVR42mP4z8AARA3/HQASuQO+MIOv2gAAAABJRU5ErkJggg==', 'base64');
+  assert.notEqual(sha256(stored), sha256(compressed));
+  const expected = { width: 1, height: 2, rgba: Buffer.from([255, 0, 0, 255, 0, 128, 255, 64]) };
+  assert.deepEqual(decodeNativePng(stored), expected);
+  assert.deepEqual(decodeNativePng(compressed), expected);
+  const changed = encodePng(1, 2, Buffer.from([255, 0, 0, 255, 0, 128, 255, 63]));
+  assert.notEqual(sha256(decodeNativePng(changed).rgba), sha256(expected.rgba));
+  assert.throws(() => decodeNativePng(stored.subarray(0, 40)), /Truncated|Invalid/);
+  const corrupt = Buffer.from(compressed);
+  corrupt[45] ^= 1;
+  assert.throws(() => decodeNativePng(corrupt), /checksum/);
 });
 
 test('request validation rejects invalid dimensions and UTF-8 payloads without normalizing them', () => {
