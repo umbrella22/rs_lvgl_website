@@ -4,7 +4,7 @@
   "meta": {
     "title": "构建一个应用，需要哪些能力",
     "locale": "zh-CN",
-    "output": ".archify/tree-capabilities-zh-0.4.0-20261105/capabilities.html",
+    "output": ".archify/tree-capabilities-zh-0.6.0-20261106-125945/capabilities.html",
     "quality_profile": "showcase"
   },
   "layout": {
@@ -35,7 +35,7 @@
     {
       "id": "basic",
       "parent": "core",
-      "label": "obj / label / button",
+      "label": "container / label / button",
       "sublabel": "基础构造函数始终可用"
     },
     {
@@ -106,7 +106,7 @@
       "dot": "emerald",
       "title": "原生依赖与 Rust 接口",
       "items": [
-        "widget-slider 需要原生 bar；要使用 bar()，仍需选择 widget-bar。",
+        "widget-slider 需要原生 bar；要使用 progress_bar()，仍需选择 widget-bar。",
         "底层 rs_lvgl_sys 提供 C 与 FFI；rs_lvgl 提供类型化封装；rs_lvgl_ui 负责声明式组合。"
       ]
     }

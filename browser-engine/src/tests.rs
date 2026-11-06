@@ -103,7 +103,7 @@ fn messages_update_state_and_overflow_is_transactional() {
 fn dead_branches_are_validated() {
     for expression in [
         "if false { loop {} } label(\"ok\")",
-        "if false { unsafe { obj() }; } label(\"ok\")",
+        "if false { unsafe { container() }; } label(\"ok\")",
         "if false { std::fs::read(\"secret\"); } label(\"ok\")",
         "if false { label(\"x\").unknown(); } label(\"ok\")",
     ] {
@@ -228,5 +228,60 @@ fn signed_minima_and_tuple_annotations_keep_their_ranges() {
     assert_eq!(
         error(&screen("let (a, b): (u8, bool) = (1, 2); label(\"x\")")).kind,
         "type"
+    );
+}
+
+#[test]
+fn release_060_names_and_alignment_keep_distinct_types_and_fields() {
+    use rs_lvgl_ui::{FlexAlign, ItemAlign};
+    let span = proc_macro2::Span::call_site();
+    let mut patch = ui::call("style", vec![], span).unwrap();
+    for (method, value) in [
+        ("justify_content", "FlexAlign::SpaceBetween"),
+        ("align_items", "ItemAlign::End"),
+        ("align_content", "FlexAlign::Center"),
+    ] {
+        patch = ui::method(
+            patch,
+            method,
+            vec![Value::Variant(value.into(), vec![])],
+            span,
+        )
+        .unwrap();
+    }
+    let Value::Style(patch) = patch else {
+        panic!("expected style")
+    };
+    assert_eq!(patch.justify_content_value(), FlexAlign::SpaceBetween);
+    assert_eq!(patch.align_items_value(), ItemAlign::End);
+    assert_eq!(patch.align_content_value(), FlexAlign::Center);
+    let expression = "container().style(Style::plain()).child(progress_bar(0, 100, 50)).justify_content(FlexAlign::Center).align_items(ItemAlign::End).align_content(FlexAlign::Start).align(Align::TopCenter)";
+    let app = InterpretedApp::new(&screen(expression)).unwrap();
+    app.render(&Theme::light()).unwrap();
+    app.render(&Theme::dark()).unwrap();
+    for expression in [
+        "container().align_items(FlexAlign::Center)",
+        "container().justify_content(ItemAlign::Center)",
+        "container().align_content(FlexAlign::Center, FlexAlign::End)",
+    ] {
+        assert_eq!(error(&screen(expression)).kind, "type", "{expression}");
+    }
+    for expression in [
+        "obj()",
+        "bar(0, 100, 50)",
+        "container().style(Style::neutral())",
+        "container().flex_align(FlexAlign::Center, FlexAlign::Center)",
+        "container().align(Align::TopMid)",
+        "if false { obj(); } container()",
+    ] {
+        assert_eq!(
+            error(&screen(expression)).kind,
+            "unsupported",
+            "{expression}"
+        );
+    }
+    assert_eq!(
+        error(&(screen("container()") + "\nenum ItemAlign { Center }")).kind,
+        "unsupported"
     );
 }

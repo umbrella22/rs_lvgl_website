@@ -105,7 +105,7 @@ LVGL_CONFIG_PATH conflicts with a requested Cargo capability: LV_USE_SLIDER must
 
 ## 关闭 Flex/Grid 后的包装器编译
 
-0.5.0 的 sys 构建根据生效的目标配置发布 `DEP_LVGL_LAYOUTS`，手写 Flex/Grid 包装分别遵循这份元数据。关闭某种布局时，对应的 Rust API 也会省略；此时调用该布局方法会产生缺少符号的编译错误。
+0.6.0 的 sys 构建根据生效的目标配置发布 `DEP_LVGL_LAYOUTS`，手写 Flex/Grid 包装分别遵循这份元数据。关闭某种布局时，对应的 Rust API 也会省略；此时调用该布局方法会产生缺少符号的编译错误。
 
 同时检查实际解析的 crate 版本、应用 `lv_conf.h` 与 normal/build 依赖的 feature。在库源码中运行 `python3 scripts/check-layout-config.py --locked` 可验证四种布局组合。`rs_lvgl_ui` 使用 Flex/Grid，需要其支持的布局配置。参见[原生检查](./development.md#组合与原生检查)。
 

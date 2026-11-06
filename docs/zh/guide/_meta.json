@@ -79,5 +79,10 @@
     "type": "file",
     "name": "composition",
     "label": "组合与受控表单"
+  },
+  {
+    "type": "file",
+    "name": "ui-api-migration",
+    "label": "UI 0.6.0 迁移"
   }
 ]

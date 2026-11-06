@@ -34,8 +34,23 @@ pub enum Identity {
 }
 
 const CONSTRUCTORS: &[&str] = &[
-    "obj", "row", "column", "grid", "label", "button", "switch", "slider", "bar", "arc",
-    "checkbox", "textarea", "dropdown", "roller", "spinbox", "spinner", "led",
+    "container",
+    "row",
+    "column",
+    "grid",
+    "label",
+    "button",
+    "switch",
+    "slider",
+    "progress_bar",
+    "arc",
+    "checkbox",
+    "textarea",
+    "dropdown",
+    "roller",
+    "spinbox",
+    "spinner",
+    "led",
 ];
 const STYLE_METHODS: &[&str] = &[
     "font",
@@ -62,7 +77,9 @@ const STYLE_METHODS: &[&str] = &[
     "hidden",
     "disabled",
     "align",
-    "flex_align",
+    "justify_content",
+    "align_items",
+    "align_content",
     "text_align",
 ];
 const NODE_METHODS: &[&str] = &[
@@ -91,7 +108,7 @@ pub fn call_supported(name: &str) -> bool {
         || matches!(
             name,
             "Style::default"
-                | "Style::neutral"
+                | "Style::plain"
                 | "Style::screen"
                 | "Style::title"
                 | "Style::body"
@@ -117,14 +134,17 @@ pub fn constant_supported(name: &str) -> bool {
             | "GridTrack::Content"
             | "Key::Auto"
             | "Align::TopLeft"
-            | "Align::TopMid"
+            | "Align::TopCenter"
             | "Align::TopRight"
-            | "Align::LeftMid"
+            | "Align::CenterLeft"
             | "Align::Center"
-            | "Align::RightMid"
+            | "Align::CenterRight"
             | "Align::BottomLeft"
-            | "Align::BottomMid"
+            | "Align::BottomCenter"
             | "Align::BottomRight"
+            | "ItemAlign::Start"
+            | "ItemAlign::Center"
+            | "ItemAlign::End"
             | "FlexAlign::Start"
             | "FlexAlign::End"
             | "FlexAlign::Center"
@@ -175,12 +195,12 @@ pub fn call(name: &str, args: Vec<Value>, span: Span) -> Result<Value> {
         })));
     }
     if let Some(preset) = name.strip_prefix("Style::") {
-        if preset == "default" || preset == "neutral" {
+        if preset == "default" || preset == "plain" {
             count(&args, 0, span)?;
             return Ok(Value::Style(Box::new(if preset == "default" {
                 Style::default()
             } else {
-                Style::neutral()
+                Style::plain()
             })));
         }
         count(&args, 1, span)?;
@@ -271,7 +291,7 @@ macro_rules! enum_value {
 fn style_method(s: Style, name: &str, a: &[Value], span: Span) -> Result<Style> {
     count(
         a,
-        if matches!(name, "border" | "offset" | "flex_align") {
+        if matches!(name, "border" | "offset") {
             2
         } else {
             1
@@ -310,20 +330,20 @@ fn style_method(s: Style, name: &str, a: &[Value], span: Span) -> Result<Style> 
             span,
             Align,
             TopLeft,
-            TopMid,
+            TopCenter,
             TopRight,
-            LeftMid,
+            CenterLeft,
             Center,
-            RightMid,
+            CenterRight,
             BottomLeft,
-            BottomMid,
+            BottomCenter,
             BottomRight
         )?),
         "text_align" => s.text_align(enum_value!(
             &a[0], span, TextAlign, Auto, Left, Center, Right
         )?),
-        "flex_align" => s.flex_align(
-            enum_value!(
+        "justify_content" | "align_content" => {
+            let align = enum_value!(
                 &a[0],
                 span,
                 FlexAlign,
@@ -333,19 +353,14 @@ fn style_method(s: Style, name: &str, a: &[Value], span: Span) -> Result<Style> 
                 SpaceEvenly,
                 SpaceAround,
                 SpaceBetween
-            )?,
-            enum_value!(
-                &a[1],
-                span,
-                FlexAlign,
-                Start,
-                End,
-                Center,
-                SpaceEvenly,
-                SpaceAround,
-                SpaceBetween
-            )?,
-        ),
+            )?;
+            if name == "justify_content" {
+                s.justify_content(align)
+            } else {
+                s.align_content(align)
+            }
+        }
+        "align_items" => s.align_items(enum_value!(&a[0], span, ItemAlign, Start, Center, End)?),
         _ => {
             return Err(Diagnostic::new(
                 "unsupported",
@@ -410,15 +425,15 @@ pub fn materialize(
     count(
         a,
         match node.name.as_str() {
-            "obj" | "spinner" => 0,
-            "grid" | "slider" | "bar" | "arc" | "spinbox" => 3,
+            "container" | "spinner" => 0,
+            "grid" | "slider" | "progress_bar" | "arc" | "spinbox" => 3,
             "checkbox" | "dropdown" | "roller" => 2,
             _ => 1,
         },
         s,
     )?;
     let mut view = match node.name.as_str() {
-        "obj" => obj(),
+        "container" => container(),
         "spinner" => spinner(),
         "row" => row(children(&a[0], s, keys, budget)?),
         "column" => column(children(&a[0], s, keys, budget)?),
@@ -431,7 +446,7 @@ pub fn materialize(
         "button" => button(a[0].text(s)?),
         "switch" => switch(a[0].boolean(s)?),
         "slider" => slider(a[0].number(s)?, a[1].number(s)?, a[2].number(s)?),
-        "bar" => bar(a[0].number(s)?, a[1].number(s)?, a[2].number(s)?),
+        "progress_bar" => progress_bar(a[0].number(s)?, a[1].number(s)?, a[2].number(s)?),
         "arc" => arc(a[0].number(s)?, a[1].number(s)?, a[2].number(s)?),
         "spinbox" => spinbox(a[0].number(s)?, a[1].number(s)?, a[2].number(s)?),
         "checkbox" => checkbox(a[0].text(s)?, a[1].boolean(s)?),

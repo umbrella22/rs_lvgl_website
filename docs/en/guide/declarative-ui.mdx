@@ -8,11 +8,13 @@ import { ConceptDiagram } from '../../../components/ConceptDiagram';
 import { NativeExample } from '../../../components/NativeExample';
 import { GuideLinks } from '../../../components/GuideLinks';
 
+
+For the 0.5.0 to 0.6.0 changes, see [UI 0.6.0 migration](./ui-api-migration.md).
 # Arrange widgets
 
 A settings screen might have a title, some content and action buttons. In `rs_lvgl_ui`, ordinary Rust functions describe those widgets; `column`, `row` and `grid` arrange them. LVGL handles layout and drawing.
 
-The [composition and forms guide](./composition.md) covers lazy children, semantic callbacks, slots and typed bindings in 0.5.0.
+The [composition and forms guide](./composition.md) covers lazy children, semantic callbacks, slots and typed bindings in 0.6.0.
 
 ## Start with a column
 
@@ -22,7 +24,7 @@ The `view` below returns a title, a description and a button. `column([...])` ar
 
 Change `gap(16)` to `gap(24)`, select **Run** and compare the spacing. You can also swap the title and description in the array and run it again.
 
-This guide uses the 0.5.0 API. Import common functions and types with `use rs_lvgl_ui::prelude::*`. Constructors return a `View<M>` description; they do not create native widgets yet.
+This guide uses the 0.6.0 API. Import common functions and types with `use rs_lvgl_ui::prelude::*`. Constructors return a `View<M>` description; they do not create native widgets yet.
 
 `M` is a generic parameter, like the familiar `T`, and its name is your choice. `View<NotificationSettingsAction>` means that this tree produces notification settings actions, such as toggling a switch or resetting it. State fields belong to the component struct, and the `update` method handles behavior; the action enum describes inputs. A view without actions can use `View<()>`.
 
@@ -50,7 +52,7 @@ fn settings_view(theme: &Theme) -> View<()> {
 
 The code creates `content` before `title`, but the title appears first because it is the first item passed to `column`. A helper returns an ordinary `View<M>` and creates a fresh description on each call. It adds no state or cache. This is useful for reusing title styles; see [Reuse components](./components.mdx).
 
-`.child(node)` appends one child; `.children(items)` appends several. `obj`, `row`, `column` and `grid` are containers, as are `tabview`, `tileview` and `msgbox` with their features enabled. Adding children to a button or label returns `UiError::InvalidProperty` before the native tree is changed.
+`.child(node)` appends one child; `.children(items)` appends several. `container`, `row`, `column` and `grid` are containers, as are `tabview`, `tileview` and `message_box` with their features enabled. Adding children to a button or label returns `UiError::InvalidProperty` before the native tree is changed.
 
 ## Set sizes, spacing and alignment
 
@@ -63,9 +65,11 @@ Chain layout and style properties directly on the view. Common choices are:
 | `.width(percent(100))` | Fill the parent's available width |
 | `.height(px(48))` | Use a fixed height |
 | `.grow(1)` | Take a share of the remaining flex space |
-| `.flex_align(main, cross)` | Align children along the main and cross axes |
+| `.justify_content(FlexAlign::SpaceBetween)` | Distribute children along the main axis |
+| `.align_items(ItemAlign::Center)` | Align children within each flex line |
+| `.align_content(FlexAlign::Center)` | Position flex lines within the container |
 
-`content()` sizes a widget to its content. `.align(...)` positions a widget in its parent; `.flex_align(...)` arranges a container's children.
+`content()` sizes a widget to its content. `.align(...)` positions a widget in its parent; the three flex properties arrange its children and lines independently.
 
 ## Place widgets in a grid
 
@@ -97,7 +101,7 @@ fn settings_view(theme: &Theme) -> View<()> {
 
 Properties follow call order: the last explicit value wins, including `0` and `false`. Unset patch fields preserve previous values or inheritance. `background` also sets background opacity to 255; call `.background_opacity(...)` after it for translucency.
 
-`style()` returns a patch with every field unset. `Style::default()` is the equivalent Rust value-construction primitive; ordinary views do not need to call it. `Style::neutral()` explicitly clears non-inheritable layout and appearance fields. Containers and labels use it as their base while text color, font and alignment inherit. Use `Style::screen(theme)`, `surface(theme)` and `accent(theme)` for themed screens, panels and action buttons, then override individual properties directly. The accent preset clears native shadows; plain buttons retain the native theme's surface and shadow.
+`style()` returns a patch with every field unset. `Style::default()` is the equivalent Rust value-construction primitive; ordinary views do not need to call it. `Style::plain()` explicitly writes base layout and appearance values; it is neither an empty patch nor a complete reset. Extended fields remain unset. Containers and labels apply those base values automatically while text color, font and alignment inherit. Use `Style::screen(theme)`, `surface(theme)` and `accent(theme)` for themed screens, panels and action buttons, then override individual properties directly. The accent preset clears native shadows; plain buttons retain the native theme's surface and shadow.
 
 These modifiers update the existing style value without a heap allocation for each property. Child collections, owned text, event closures and reconciliation can still allocate. The runtime manages native style resources during mount, update and unmount. See [Mount and update](./ui-runtime.mdx) for memory and lifetime boundaries.
 

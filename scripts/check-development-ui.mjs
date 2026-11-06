@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { NativeRenderer, decodeNativePng, runProcess, sha256, websiteRoot } from "./playground-native.mjs";
+import { verifyNativeGeometry } from "./native-ui-geometry.mjs";
 
 const args = process.argv.slice(2);
 const index = args.indexOf("--source");
@@ -24,9 +25,13 @@ async function identity() {
   return sha256(JSON.stringify(files));
 }
 const before = await identity();
+const layoutApi = await fs.readFile(path.join(librarySource, "rs_lvgl_ui/src/constructors/layout.rs"), "utf8");
+assert.ok(/pub fn container</.test(layoutApi), "requires the UI API from 0.6.0 or later");
+const claritySource = await fs.readFile(path.join(websiteRoot, "playground/development/api-clarity.rs"), "utf8");
 const source = await fs.readFile(path.join(websiteRoot, "playground/development/forms.rs"), "utf8");
 const controlsSource = await fs.readFile(path.join(websiteRoot, "playground/examples/controls.rs"), "utf8");
 const skillSource = await fs.readFile(path.join(librarySource, ".agents/skills/rs-lvgl-ui/references/form.rs"), "utf8");
+const clarityRecipe = await fs.readFile(path.join(librarySource, ".agents/skills/rs-lvgl-ui/references/api-clarity.rs"), "utf8");
 const skillMain = skillSource.indexOf("fn main()");
 assert.ok(skillMain > 0, "the runnable skill must contain its standalone main");
 // The Playground includes the snippet after its own items, so retain crate
@@ -36,7 +41,7 @@ const renderer = new NativeRenderer({ artifactRoot, librarySource });
 const cases = [];
 
 // A unique knob color reveals the actual native ink without changing geometry.
-const knobStyle = '.part_style(Part::Knob, style().background(Color::rgb(255, 0, 255)))';
+const knobStyle = '.thumb_style(style().background(Color::rgb(255, 0, 255)))';
 function knobFootprint(pixels) {
   let left = pixels.width, top = pixels.height, right = -1, bottom = -1;
   for (let y = 0; y < pixels.height; y++) {
@@ -111,9 +116,35 @@ fn view(_: &Theme) -> View<()> {
   assert.equal(invalid.kind, "compile");
   assert.ok(invalid.diagnostics.some((item) => item.code === "E0277" && item.message.includes("Text")));
   cases.push({ name: "wrong-typed-property-rejected-by-rustc" });
+  {
+    for (const locale of ["en", "zh"]) {
+      const guide = await fs.readFile(path.join(websiteRoot, `docs/${locale}/guide/ui-api-migration.md`), "utf8");
+      assert.ok(guide.includes("```rust\n" + claritySource.trim() + "\n```"), `${locale} migration example must match compiled source`);
+    }
+    for (const theme of ["light", "dark"]) {
+      const result = await renderer.render({ source: claritySource, theme });
+      assert.equal(result.ok, true, JSON.stringify(result));
+      const png = Buffer.from(result.image.split(",")[1], "base64");
+      await fs.writeFile(path.join(artifactRoot, `api-clarity-${theme}.png`), png);
+      cases.push({ name: `api-clarity-${theme}`, pixels: sha256(decodeNativePng(png).rgba) });
+    }
+    for (const [name, from, to, code] of [
+      ["raw-scale", "Scale::percent(150)", "384", "E0308"],
+      ["raw-angle", "Angle::degrees(45)", "450", "E0308"],
+      ["item-distribution", "ItemAlign::Center", "FlexAlign::SpaceBetween", "E0308"],
+      ["switch-progress", 'typed::switch(true).into_view()', 'typed::switch(true).progress_style(style()).into_view()', "E0277"],
+    ]) {
+      assert.ok(claritySource.includes(from));
+      const result = await renderer.render({ source: claritySource.replace(from, to) });
+      assert.equal(result.kind, "compile");
+      assert.ok(result.diagnostics.some((item) => item.code === code), JSON.stringify(result));
+      cases.push({ name: `api-clarity-reject-${name}`, expectedError: code });
+    }
+  }
+  cases.push(...await verifyNativeGeometry({ renderer, claritySource, clarityRecipe, artifactRoot }));
   assert.equal(await identity(), before, "development native inputs changed during acceptance");
   await fs.writeFile(path.join(artifactRoot, "results.json"), JSON.stringify({
-    status: "passed", librarySource, sourceIdentity: before, snippetHash: sha256(source), cases,
+    status: "passed", librarySource, apiFamily: "released-0.6.0", sourceIdentity: before, snippetHash: sha256(source), cases,
     limits: "Native snapshots and compiler diagnostics; online subset interpreter and device acceptance are separate.",
   }, null, 2) + "\n");
   console.log(`Passed ${cases.length} composition native Playground cases. Images: ${artifactRoot}`);

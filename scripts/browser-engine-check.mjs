@@ -63,6 +63,12 @@ for (let pass = 1; pass <= passes; pass++) {
     app._studio_destroy(); reference._studio_destroy();
   }
   passed("seven interpreted presets and stateful switch match compiled LVGL pixels");
+  const placement = 'container().style(Style::plain()).width(px(320)).height(px(200)).align(Align::TopCenter).child(column([progress_bar(0, 100, 50).width(px(120)).height(px(24))]).width(percent(100)).height(percent(100)).justify_content(FlexAlign::Center).align_items(ItemAlign::Center).align_content(FlexAlign::Center))';
+  const centered = await instance(screen(placement));
+  const start = await instance(screen(placement.replace('align_content(FlexAlign::Center)', 'align_content(FlexAlign::Start)')));
+  assert.notEqual(sha256(pixels(centered)), sha256(pixels(start)), "independent line alignment changes native pixels");
+  centered._studio_destroy(); start._studio_destroy();
+  passed("0.6.0 container, progress bar, plain style and independent alignment render");
   const cadence = [];
   for (const hz of [60, 120]) {
     const animation = await instance(animatedPreviewSource);
@@ -101,6 +107,8 @@ for (let pass = 1; pass <= passes; pass++) {
   for (const [text, kind] of [
     [screen('label("oops"'),1], [screen('if false { loop {} } label("ok")'),2],
     [screen('label("x").width(px(40000))'),3],
+    [screen('obj()'),2], [screen('container().style(Style::neutral())'),2],
+    [screen('container().align_items(FlexAlign::Center)'),5],
     [screen('again(theme)') + '\nfn again(theme: &Theme) -> View<()> { again(theme) }',4],
     [screen('label(true)'),5],
     [screen('let value = work(16); label(format!("{value}"))') + '\nfn work(n: u32) -> u32 { if n == 0 { 0 } else { work(n - 1) + work(n - 1) } }',4],

@@ -79,5 +79,10 @@
     "type": "file",
     "name": "composition",
     "label": "Composition and forms"
+  },
+  {
+    "type": "file",
+    "name": "ui-api-migration",
+    "label": "UI 0.6.0 migration"
   }
 ]

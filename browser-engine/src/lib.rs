@@ -104,7 +104,7 @@ impl App for InterpretedApp {
             Ok(view) => view,
             Err(error) => {
                 *self.diagnostic.borrow_mut() = Some(error);
-                rs_lvgl_ui::obj()
+                rs_lvgl_ui::container()
             }
         }
     }

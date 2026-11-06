@@ -4,7 +4,7 @@
   "meta": {
     "title": "Capabilities that make an application",
     "locale": "en",
-    "output": ".archify/tree-capabilities-en-0.4.0-20261105/capabilities.html",
+    "output": ".archify/tree-capabilities-en-0.6.0-20261106-125945/capabilities.html",
     "quality_profile": "showcase"
   },
   "layout": {
@@ -35,7 +35,7 @@
     {
       "id": "basic",
       "parent": "core",
-      "label": "obj / label / button",
+      "label": "container / label / button",
       "sublabel": "Base constructors always available"
     },
     {
@@ -106,7 +106,7 @@
       "dot": "emerald",
       "title": "Native dependencies and Rust APIs",
       "items": [
-        "widget-slider needs native bar; using bar() still requires widget-bar.",
+        "widget-slider needs native bar; using progress_bar() still requires widget-bar.",
         "rs_lvgl_sys supplies C/FFI, rs_lvgl supplies typed wrappers, and rs_lvgl_ui supplies declarative composition."
       ]
     }

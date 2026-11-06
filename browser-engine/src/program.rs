@@ -95,6 +95,7 @@ impl Program {
                         | "Font"
                         | "Align"
                         | "FlexAlign"
+                        | "ItemAlign"
                         | "TextAlign"
                 ) {
                     return Err(Diagnostic::new(

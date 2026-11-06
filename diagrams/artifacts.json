@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generator": "archify 3.1.0",
-  "evidenceSha256": "d55a33786b408519566d9e7d5f1911c80dbc99d44de869aea29acc0fc1d7b728",
+  "evidenceSha256": "8feea03d8b1a8275c85d1792ee47b8dedb0d5bce334f4e70be1b4dfb96e40452",
   "figures": [
     {
       "id": "data-model",
@@ -70,12 +70,12 @@
       "title": "构建一个应用，需要哪些能力",
       "viewBox": [
         770,
-        851
+        868
       ],
-      "candidateSha256": "ca596508f0dd9eac60d6aee24e16a3fdb0bcb6162b6194ef3bd66eac3fd6d477",
-      "archifyHtmlSha256": "8f51cb8b2dae508a1852832e9e3858867984b5448e961349ff6ba8995ce03632",
-      "normalizedArchifyHtmlSha256": "5fb558ff36410b2789f1d24e2d72d1b7379a93c6f97db3284ea90c48346637dc",
-      "htmlSha256": "109e5b9fea17a8ae5cc704c2eb14c477f575988873c18f69e17c0a8b1015e5ab",
+      "candidateSha256": "9851c452f74985b385aa7fa28fc6c70aabb37cb19bcb5fead1534df0a769f4e9",
+      "archifyHtmlSha256": "4acdda1b66984533ecba65c9675334b4f2ee3b7a7c55722739d35d3740763a6c",
+      "normalizedArchifyHtmlSha256": "e6dadfe3629f0faafa04fdba0e9d399fd5c33870760ee2cb5b047fa5ac887ec5",
+      "htmlSha256": "c0ff16fe3c917e4f87254a3412ef811a98fd2146f2c2dcb09f240cba719a6659",
       "gates": {
         "validate": "pass",
         "deliver": "pass",
@@ -150,12 +150,12 @@
       "title": "Capabilities that make an application",
       "viewBox": [
         902,
-        935
+        952
       ],
-      "candidateSha256": "429ae282e39f65a4d7753820b33855814f227820db8fa951009d1b288f18c45f",
-      "archifyHtmlSha256": "6bc67eb4c3eccdbb37b2aead32d4095d37f1cb54cb5c87f2037cf4ba4884d8d8",
-      "normalizedArchifyHtmlSha256": "aa6291803875e5f0db38dab5de1ef9fbe5d06680b20ae9b9be0574ba46736da2",
-      "htmlSha256": "06e0e7be7af0f92f2c48b45df6aadb5f3343afec922354e0a5476075db57118f",
+      "candidateSha256": "c0f8abb068757cf3a5160cbc8b6437adaecd5d6679a4c74e1e623a377cc4a1fa",
+      "archifyHtmlSha256": "d483190ff86e3dc82c5dc5070309c0a23f55bb94042a34993c24970c7c6e7792",
+      "normalizedArchifyHtmlSha256": "62016fe454ce6f33238a2eea93b4092a3a0428697b1f8beb26596ac1cf771f62",
+      "htmlSha256": "e51b17201e45f9e55b150ab94d2bb6f9cac8fac38fe4662a2df322b79ba4cefe",
       "gates": {
         "validate": "pass",
         "deliver": "pass",

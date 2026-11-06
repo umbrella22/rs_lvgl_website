@@ -1,11 +1,11 @@
 ---
 title: Composition and controlled forms
-description: Use lazy children, semantic events, typed widget construction, component slots and explicit form bindings in rs_lvgl_ui 0.5.0.
+description: Use lazy children, semantic events, typed widget construction, component slots and explicit form bindings in rs_lvgl_ui 0.6.0.
 ---
 
 # Composition and controlled forms
 
-`rs_lvgl_ui` 0.5.0 provides these APIs from crates.io. Install `rs_lvgl_ui = "0.5.0"` and enable the widget features used by the form. The website's `source/` pins the matching library release. The online Playground interpreter supports a bounded Rust subset; the conditional children, semantic callbacks, slots, typed constructors and bindings on this page require the native Rust compiler.
+`rs_lvgl_ui` 0.6.0 provides these APIs from crates.io. Install `rs_lvgl_ui = "0.6.0"` and enable the widget features used by the form. The website's `source/` pins the matching library release. The online Playground interpreter supports a bounded Rust subset; the conditional children, semantic callbacks, slots, typed constructors and bindings on this page require the native Rust compiler.
 
 ## Compose children in ordinary Rust
 

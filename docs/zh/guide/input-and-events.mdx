@@ -12,7 +12,7 @@ import { GuideLinks } from '../../../components/GuideLinks';
 
 开关改变时，旁边的状态文字也应该改变。把控件输入转换成消息，在 `App::update` 中保存新值，再让 `view` 读取它，就能完成这样的交互。
 
-0.5.0 的条件组合、语义回调、插槽和 typed 绑定见[组合与受控表单](./composition.md)。
+0.6.0 的条件组合、语义回调、插槽和 typed 绑定见[组合与受控表单](./composition.md)。
 
 ## 试着切换通知开关
 
@@ -58,7 +58,7 @@ ui.timer_handler(); // 派发原生计时器与输入回调
 let stats = ui.drain(&mut app, 32)?;
 ```
 
-该片段只包含帧循环中的两条调用；[input 示例](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_ui/examples/input.rs) 提供显示、键盘与循环。
+该片段只包含帧循环中的两条调用；[input 示例](https://github.com/umbrella22/rs_lvgl/blob/v0.6.0/rs_lvgl_ui/examples/input.rs) 提供显示、键盘与循环。
 
 `drain(&mut app, max_messages)` 最多处理指定数量的消息，逐条调用 `App::update`，然后为整个批次调用一次 `App::view` 并协调一次。它返回 `DrainStats`：
 
@@ -148,7 +148,7 @@ ui.focus(Key::Named("save"))?;
 
 ## 可运行示例
 
-[input.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.5.0/rs_lvgl_ui/examples/input.rs) 创建 SDL 窗口、鼠标与键盘，挂载两个按钮和一个可滚动列，把键盘绑定到 UI，聚焦 `Key::Named("add")`，并在帧循环中排空指针点击、键码与滚动偏移。
+[input.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.6.0/rs_lvgl_ui/examples/input.rs) 创建 SDL 窗口、鼠标与键盘，挂载两个按钮和一个可滚动列，把键盘绑定到 UI，聚焦 `Key::Named("add")`，并在帧循环中排空指针点击、键码与滚动偏移。
 
 ```sh
 cargo run -p rs_lvgl_ui --example input --features simulator,input-keypad

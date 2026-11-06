@@ -1,11 +1,11 @@
 ---
 title: 组合与受控表单
-description: 在 rs_lvgl_ui 0.5.0 中使用条件子节点、语义事件、类型化控件、组件插槽和显式表单绑定。
+description: 在 rs_lvgl_ui 0.6.0 中使用条件子节点、语义事件、类型化控件、组件插槽和显式表单绑定。
 ---
 
 # 组合与受控表单
 
-`rs_lvgl_ui` 0.5.0 已提供以下接口。通过 crates.io 安装 `rs_lvgl_ui = "0.5.0"`，并启用表单所需的控件 feature。网站的 `source/` 固定到对应库版本。在线演练场解释器支持有限的 Rust 子集；本页的条件子节点、语义回调、插槽、typed 构造和 binding 需要使用原生 Rust 编译器。
+`rs_lvgl_ui` 0.6.0 已提供以下接口。通过 crates.io 安装 `rs_lvgl_ui = "0.6.0"`，并启用表单所需的控件 feature。网站的 `source/` 固定到对应库版本。在线演练场解释器支持有限的 Rust 子集；本页的条件子节点、语义回调、插槽、typed 构造和 binding 需要使用原生 Rust 编译器。
 
 ## 用普通 Rust 组合子节点
 

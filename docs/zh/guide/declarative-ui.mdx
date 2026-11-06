@@ -8,11 +8,13 @@ import { ConceptDiagram } from '../../../components/ConceptDiagram';
 import { NativeExample } from '../../../components/NativeExample';
 import { GuideLinks } from '../../../components/GuideLinks';
 
+
+从 0.5.0 升级到 0.6.0 的修改见 [UI 0.6.0 迁移](./ui-api-migration.md)。
 # 排列控件
 
 一个设置页通常由标题、内容和操作按钮组成。`rs_lvgl_ui` 用普通 Rust 函数描述这些控件，再用 `column`、`row` 或 `grid` 把它们放在一起。LVGL 负责布局和绘制。
 
-0.5.0 的条件组合、语义回调、插槽和 typed 绑定见[组合与受控表单](./composition.md)。
+0.6.0 的条件组合、语义回调、插槽和 typed 绑定见[组合与受控表单](./composition.md)。
 
 ## 从一列开始
 
@@ -22,7 +24,7 @@ import { GuideLinks } from '../../../components/GuideLinks';
 
 把 `gap(16)` 改成 `gap(24)`，点击**运行**，观察控件之间的距离。也可以交换标题和说明在数组中的位置，再运行一次。
 
-本文使用 0.5.0 API。通过 `use rs_lvgl_ui::prelude::*` 导入常用函数和类型。构造函数返回 `View<M>` 描述，创建描述时还不会创建原生控件。
+本文使用 0.6.0 API。通过 `use rs_lvgl_ui::prelude::*` 导入常用函数和类型。构造函数返回 `View<M>` 描述，创建描述时还不会创建原生控件。
 
 `M` 是泛型参数，作用与常见的 `T` 相同，名字可以自定。`View<NotificationSettingsAction>` 表示这棵视图会产生通知设置组件的操作，例如切换开关或重置。状态字段保存在组件结构体中，处理逻辑写在 `update` 方法中；操作枚举只描述输入。没有操作的视图可以使用 `View<()>`。
 
@@ -50,7 +52,7 @@ fn settings_view(theme: &Theme) -> View<()> {
 
 这里先创建 `content`，再创建 `title`，但标题仍显示在前面，因为它是 `column` 的第一项。辅助函数返回普通 `View<M>`，每次调用生成一个新的描述；它不会自动增加状态或缓存。需要复用标题样式时，这种提取就很有用，更多用法见[复用组件](./components.mdx)。
 
-`.child(node)` 可以追加一个子节点，`.children(items)` 可以追加多个。`obj`、`row`、`column`、`grid` 是容器；启用对应特性后，`tabview`、`tileview` 和 `msgbox` 也能接收子节点。给按钮或标签添加子节点会返回 `UiError::InvalidProperty`，校验失败时还没有改动原生树。
+`.child(node)` 可以追加一个子节点，`.children(items)` 可以追加多个。`container`、`row`、`column`、`grid` 是容器；启用对应特性后，`tabview`、`tileview` 和 `message_box` 也能接收子节点。给按钮或标签添加子节点会返回 `UiError::InvalidProperty`，校验失败时还没有改动原生树。
 
 ## 设置尺寸、间距与对齐
 
@@ -63,9 +65,11 @@ fn settings_view(theme: &Theme) -> View<()> {
 | `.width(percent(100))` | 占满父节点可用宽度 |
 | `.height(px(48))` | 使用固定高度 |
 | `.grow(1)` | 分配 flex 容器中的剩余空间 |
-| `.flex_align(main, cross)` | 设置子节点在主轴与交叉轴上的对齐方式 |
+| `.justify_content(FlexAlign::SpaceBetween)` | 设置子节点沿主轴的分布 |
+| `.align_items(ItemAlign::Center)` | 设置子节点在每条 Flex 行内的对齐 |
+| `.align_content(FlexAlign::Center)` | 设置 Flex 行在容器内的位置 |
 
-`content()` 随内容确定尺寸。`.align(...)` 设置节点在父节点中的位置，`.flex_align(...)` 设置容器里的子节点排布。
+`content()` 随内容确定尺寸。`.align(...)` 设置节点在父节点中的位置，三个 Flex 属性分别设置子节点与行的排布。
 
 ## 用网格指定位置
 
@@ -97,7 +101,7 @@ fn settings_view(theme: &Theme) -> View<()> {
 
 同一属性按调用顺序覆盖，最后显式设置的值生效，包括 `0` 和 `false`。补丁没有设置的字段保留原值或继承关系。`background` 同时把背景透明度设为 255，需要半透明时在它之后调用 `.background_opacity(...)`。
 
-`style()` 返回字段均未设置的补丁；`Style::default()` 是同样的 Rust 值初始化原语，普通视图无需显式调用。`Style::neutral()` 显式清除不可继承的布局与外观字段，容器和标签以此为基础，文字颜色、字体和对齐继续继承。`Style::screen(theme)`、`surface(theme)` 和 `accent(theme)` 可用于主题屏幕、面板和强调按钮；平铺属性仍可继续覆盖它们。强调按钮预设清除原生阴影，普通按钮保留原生主题的表面与阴影。
+`style()` 返回字段均未设置的补丁；`Style::default()` 是同样的 Rust 值初始化原语，普通视图无需显式调用。`Style::plain()` 显式写入基础布局与外观值，既不是空补丁，也不是完整重置，扩展字段仍未设置。容器和标签会自动应用这些基础值，文字颜色、字体和对齐继续继承。`Style::screen(theme)`、`surface(theme)` 和 `accent(theme)` 可用于主题屏幕、面板和强调按钮；平铺属性仍可继续覆盖它们。强调按钮预设清除原生阴影，普通按钮保留原生主题的表面与阴影。
 
 这些修饰器修改已有的样式值，每设置一个属性不会额外分配堆内存。子节点集合、拥有所有权的文本、事件闭包和运行时协调仍可能分配；原生样式资源由运行时随挂载、更新和卸载管理。完整的内存与生命周期边界见[挂载与更新](./ui-runtime.mdx)。
 

@@ -114,7 +114,7 @@ configuration even if the raw build succeeds.
 
 ## Wrapper compilation after disabling Flex/Grid
 
-In 0.5.0, the sys build emits `DEP_LVGL_LAYOUTS` from the effective target configuration. Handwritten Flex/Grid wrappers follow that metadata independently, so disabling a layout removes its corresponding Rust API. A missing layout method is expected when that layout is disabled.
+In 0.6.0, the sys build emits `DEP_LVGL_LAYOUTS` from the effective target configuration. Handwritten Flex/Grid wrappers follow that metadata independently, so disabling a layout removes its corresponding Rust API. A missing layout method is expected when that layout is disabled.
 
 Check the resolved crate version, application `lv_conf.h` and normal/build dependency features together. Run `python3 scripts/check-layout-config.py --locked` from the library checkout to validate the four layout combinations. `rs_lvgl_ui` uses Flex/Grid and requires its supported layout configuration. See [native checks](./development.md#composition-and-native-checks).
 
