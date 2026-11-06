@@ -13,7 +13,9 @@ function inkShape(pixels, color = "magenta") {
     for (let x = 0; x < pixels.width; x++) {
       const i = (y * pixels.width + x) * 4;
       const [r, g, b] = pixels.rgba.subarray(i, i + 3);
-      const visible = color === "cyan" ? g - r > 32 && b - r > 32 : r - g > 32 && b - g > 32;
+      // The opaque slot has square edges. Its exact marker excludes the native
+      // blue switch, which also has more green/blue than red.
+      const visible = color === "cyan" ? r === 0 && g === 255 && b === 255 : r - g > 32 && b - g > 32;
       if (!visible) continue;
       points.push([x, y]);
       left = Math.min(left, x); top = Math.min(top, y);
@@ -169,6 +171,7 @@ export async function verifyNativeGeometry({ renderer, claritySource, clarityRec
     assert.ok(marked.includes(slot));
     const frame = await render(`sample-square-frame-${theme}`,
       marked.replace(slot, slot + ".background(Color::rgb(0, 255, 255))"), theme, "cyan");
+    assert.deepEqual([frame.width, frame.height], [64, 64], "measure only the allocated transform slot");
     const [l, t, r, b] = actual.bounds, [fl, ft, fr, fb] = frame.bounds;
     assert.ok(l > fl && t > ft && r < fr && b < fb, "all transformed corners must fit inside the layout slot");
     cases.push({ name: `native-geometry-sample-square-${theme}`, actual, reference, frame });
