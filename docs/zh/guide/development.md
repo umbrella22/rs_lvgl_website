@@ -4,7 +4,7 @@ description: 构建并测试工作区，维护生成器、原生配置、双语�
 ---
 
 
-从 0.5.0 升级到 0.6.0 的修改见 [UI 0.6.0 迁移](./ui-api-migration.md)。
+从 0.6.0 升级到 0.7.0 的修改见 [UI 0.7.0 迁移](./ui-api-migration.md)。
 # 参与开发
 
 修改 Rust 封装、原生配置或文档时，从对应目录开始。下面列出代码生成的位置、各层检查命令，以及文档示例的更新方式。
@@ -166,7 +166,7 @@ python3 scripts/install-skills.py --dest ~/.agents/skills
 python3 scripts/install-skills.py --dest ../application/.agents/skills --skill rs-lvgl-ui
 ```
 
-安装脚本拒绝覆盖已存在的 skill 目录。CI 通过 `scripts/check-skills.py` 校验打包后的 skill；发现与维护方式见 [AI 开发 skill](https://github.com/umbrella22/rs_lvgl/blob/v0.6.0/docs/ai-skills.md)。
+安装脚本拒绝覆盖已存在的 skill 目录。CI 通过 `scripts/check-skills.py` 校验打包后的 skill；发现与维护方式见 [AI 开发 skill](https://github.com/umbrella22/rs_lvgl/blob/v0.7.0/docs/ai-skills.md)。
 
 ## 宿主测试与目标限制
 
@@ -174,6 +174,6 @@ python3 scripts/install-skills.py --dest ../application/.agents/skills --skill r
 
 ## 组合与原生检查
 
-[组合与受控表单](./composition.md)说明 0.6.0 的条件子节点、语义事件、typed 构造、插槽与显式绑定。通过 `npm run check-development-ui -- --source ./source` 验证网站固定的库源码；开发时可用 `--source ../lv_binding_rust` 选择本地库。常规构建与浏览器运行时使用固定的 `source/`。
+[组合与受控表单](./composition.md)说明 0.7.0 的条件子节点、语义事件、typed 构造、插槽与显式绑定。通过 `npm run check-development-ui -- --source ./source` 验证网站固定的库源码；开发时可用 `--source ../lv_binding_rust` 选择本地库。常规构建与浏览器运行时使用固定的 `source/`。
 
 sys 构建根据生效的目标宏发布 `DEP_LVGL_LAYOUTS`，使手写包装分别遵循 Flex/Grid 是否可用。在库根目录运行 `python3 scripts/check-layout-config.py --locked` 可检查四种组合的真实消费者。声明式 UI 需要其支持的布局配置。

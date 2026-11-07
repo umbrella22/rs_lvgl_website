@@ -83,6 +83,6 @@
   {
     "type": "file",
     "name": "ui-api-migration",
-    "label": "UI 0.6.0 migration"
+    "label": "UI 0.7.0 migration"
   }
 ]

@@ -1,4 +1,4 @@
-// rs_lvgl_ui 0.6.0; validate with check-development-ui against the pinned source.
+// rs_lvgl_ui 0.7.0; validate with check-development-ui against the pinned source.
 use rs_lvgl_ui::prelude::*;
 
 fn view(theme: &Theme) -> View<()> {

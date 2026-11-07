@@ -9,12 +9,12 @@ import { NativeExample } from '../../../components/NativeExample';
 import { GuideLinks } from '../../../components/GuideLinks';
 
 
-For the 0.5.0 to 0.6.0 changes, see [UI 0.6.0 migration](./ui-api-migration.md).
+For the 0.6.0 to 0.7.0 changes, see [UI 0.7.0 migration](./ui-api-migration.md).
 # Arrange widgets
 
 A settings screen might have a title, some content and action buttons. In `rs_lvgl_ui`, ordinary Rust functions describe those widgets; `column`, `row` and `grid` arrange them. LVGL handles layout and drawing.
 
-The [composition and forms guide](./composition.md) covers lazy children, semantic callbacks, slots and typed bindings in 0.6.0.
+The [composition and forms guide](./composition.md) covers lazy children, semantic callbacks, slots and typed bindings in 0.7.0.
 
 ## Start with a column
 
@@ -24,7 +24,7 @@ The `view` below returns a title, a description and a button. `column([...])` ar
 
 Change `gap(16)` to `gap(24)`, select **Run** and compare the spacing. You can also swap the title and description in the array and run it again.
 
-This guide uses the 0.6.0 API. Import common functions and types with `use rs_lvgl_ui::prelude::*`. Constructors return a `View<M>` description; they do not create native widgets yet.
+This guide uses the 0.7.0 API. Import common functions and types with `use rs_lvgl_ui::prelude::*`. Constructors return a `View<M>` description; they do not create native widgets yet.
 
 `M` is a generic parameter, like the familiar `T`, and its name is your choice. `View<NotificationSettingsAction>` means that this tree produces notification settings actions, such as toggling a switch or resetting it. State fields belong to the component struct, and the `update` method handles behavior; the action enum describes inputs. A view without actions can use `View<()>`.
 

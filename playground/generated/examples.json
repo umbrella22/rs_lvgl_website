@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nativeIdentity": "4e5394c8d2e0a343ad715961dc9508a8eb1f44e0f03e981ff0843aea1d3d6fa8",
+  "nativeIdentity": "484e6e27537949ca92b87e5a45e39cbdbaccc32486684803856b2aa8bd9836f6",
   "renderer": "rs_lvgl_ui::Ui::snapshot / LVGL 9.6",
   "viewport": {
     "width": 640,
@@ -20,7 +20,7 @@
       },
       "source": "use rs_lvgl_ui::prelude::*;\n\nfn view(theme: &Theme) -> View<()> {\n    column([\n        label(\"Hello, LVGL\")\n            .font(theme.title_font)\n            .text_color(theme.text),\n        label(\"A screen is a tree of ordinary Rust values.\")\n            .font(theme.body_font)\n            .text_color(theme.text),\n        button(\"Start building\").style(Style::accent(theme)),\n    ])\n    .style(Style::screen(theme))\n    .font(theme.body_font)\n    .text_color(theme.text)\n    .padding(24)\n    .gap(16)\n}\n",
       "sourceHash": "329a1cdc1689e8e78490034932c1699e6f59f703a94ce00efaa1947330759393",
-      "imageHash": "ef389e582e27143f96b9a109a932a00252eb76782291774cac4e7f823479d15d",
+      "imageHash": "6e1b435079d66e0b6412bf1b49b403b804fd81e269105443a0aacc9f43d6014a",
       "image": "/playground/column.png",
       "width": 640,
       "height": 400
@@ -37,7 +37,7 @@
       },
       "source": "use rs_lvgl_ui::prelude::*;\n\nfn view(theme: &Theme) -> View<()> {\n    let actions = row([\n        button(\"Back\").font(theme.body_font).text_color(theme.text),\n        label(\"Step 2 of 3\")\n            .font(theme.body_font)\n            .text_color(theme.text)\n            .grow(1),\n        button(\"Continue\").style(Style::accent(theme)),\n    ])\n    .style(Style::surface(theme))\n    .width(percent(100))\n    .gap(12);\n\n    column([\n        label(\"Make room\")\n            .font(theme.title_font)\n            .text_color(theme.text),\n        label(\"The middle label grows into the available space.\"),\n        actions,\n    ])\n    .style(Style::screen(theme))\n    .font(theme.body_font)\n    .text_color(theme.text)\n    .padding(24)\n    .gap(20)\n}\n",
       "sourceHash": "af4311de01c760dc55726dcb6c45f9b2ab10d2c1c64fb10f3e09a06cfa7a253d",
-      "imageHash": "0880e08a80e3239de4a3ae51926846167c51b81f0a69b80495a8445b99eab008",
+      "imageHash": "0fc0ab4660fbbeb360d4d5e79a4840454ffdd1dfc456a6842fc9dbd687360782",
       "image": "/playground/row.png",
       "width": 640,
       "height": 400
@@ -54,7 +54,7 @@
       },
       "source": "use rs_lvgl_ui::prelude::*;\n\nfn view(theme: &Theme) -> View<()> {\n    let tiles = grid(\n        [GridTrack::Fr(1), GridTrack::Fr(1)],\n        [GridTrack::Px(72), GridTrack::Px(72)],\n        [\n            button(\"Top left\").grid_cell(0, 0, 1, 1),\n            button(\"Top right\").grid_cell(1, 0, 1, 1),\n            button(\"Two columns\").grid_cell(0, 1, 2, 1),\n        ],\n    )\n    .style(Style::surface(theme))\n    .width(percent(100))\n    .gap(12);\n\n    column([\n        label(\"A place for everything\")\n            .font(theme.title_font)\n            .text_color(theme.text),\n        tiles,\n    ])\n    .style(Style::screen(theme))\n    .font(theme.body_font)\n    .text_color(theme.text)\n    .padding(24)\n    .gap(20)\n}\n",
       "sourceHash": "331153cdab01c3178566843286168676d81cb0f3df7a9757201c11dae744eb5d",
-      "imageHash": "5dce39855bf4503f0bed9c339c98d1ca98d0c1a08009bf661e70da165d0649e0",
+      "imageHash": "8dd39e8eaf00186032995727864ef2baba1d65bed3f9acf72eb7c936612a083d",
       "image": "/playground/grid.png",
       "width": 640,
       "height": 400
@@ -71,7 +71,7 @@
       },
       "source": "use rs_lvgl_ui::prelude::*;\n\nfn page_title<M>(text: &str, theme: &Theme) -> View<M> {\n    column([\n        label(\"WORKSPACE\")\n            .font(theme.body_font)\n            .text_color(theme.muted),\n        label(text).font(theme.title_font).text_color(theme.text),\n    ])\n    .gap(8)\n}\n\nfn view(theme: &Theme) -> View<()> {\n    let content = label(\"Notification preferences\");\n    let title = page_title(\"Settings\", theme);\n\n    column([title, content, button(\"Save\").style(Style::accent(theme))])\n        .style(Style::screen(theme))\n        .font(theme.body_font)\n        .text_color(theme.text)\n        .padding(24)\n        .gap(24)\n}\n",
       "sourceHash": "08bd4e7b2393e4e5d6d10168ab6aa617b8124e9acb653c2490785ff46bc03c89",
-      "imageHash": "0f91581556b34ed2fb954d43830c1e746f07d4812a07e8ee1ee32875fcdd8065",
+      "imageHash": "0ca72b77acc77dddef257e25d5e3da1f3317776a847227a94fd52605d02d5623",
       "image": "/playground/title.png",
       "width": 640,
       "height": 400
@@ -88,7 +88,7 @@
       },
       "source": "use rs_lvgl_ui::prelude::*;\n\nfn view(theme: &Theme) -> View<()> {\n    column([\n        label(\"Device settings\")\n            .font(theme.title_font)\n            .text_color(theme.text),\n        row([\n            label(\"Brightness\")\n                .font(theme.body_font)\n                .text_color(theme.text),\n            slider(0, 100, 64).width(px(240)).height(px(16)),\n            label(\"64%\"),\n        ])\n        .style(Style::surface(theme))\n        .gap(24),\n        row([label(\"Notifications\"), switch(true)])\n            .style(Style::surface(theme))\n            .gap(24),\n        button(\"Apply settings\").style(Style::accent(theme)),\n    ])\n    .style(Style::screen(theme))\n    .font(theme.body_font)\n    .text_color(theme.text)\n    .padding(24)\n    .gap(24)\n}\n",
       "sourceHash": "de086b1e8af11acb0d3c26d3801399f8a2d0c2549954b8ad8ec0636c874ea61b",
-      "imageHash": "036327e8625b743b524d6961157fd1e2682dd5f1b0ecfe562f3a17e1f1828797",
+      "imageHash": "94a538d590082c74c9a239432fc757399d3a5a81044283572488ccfc73fa2266",
       "image": "/playground/controls.png",
       "width": 640,
       "height": 400
@@ -105,7 +105,7 @@
       },
       "source": "use rs_lvgl_ui::prelude::*;\n\nfn view(theme: &Theme) -> View<()> {\n    let devices = [(41, \"Studio\"), (73, \"Kitchen\"), (92, \"Bedroom\")];\n    let rows = devices.into_iter().map(|(id, name)| {\n        row([\n            label(name)\n                .font(theme.body_font)\n                .text_color(theme.text)\n                .grow(1),\n            label(format!(\"ID {id}\"))\n                .font(theme.body_font)\n                .text_color(theme.muted),\n        ])\n        .key(Key::Id(id))\n        .style(Style::surface(theme))\n        .width(percent(100))\n        .padding(16)\n    });\n\n    column([label(\"Your devices\")\n        .font(theme.title_font)\n        .text_color(theme.text)])\n    .children(rows)\n    .style(Style::screen(theme))\n    .font(theme.body_font)\n    .text_color(theme.text)\n    .padding(24)\n    .gap(12)\n}\n",
       "sourceHash": "1521d8ad7fb0512edcff88c30915b36e84c20e38621cfaf80f96c653cd9de781",
-      "imageHash": "b844cf65815cb6edf8e77eebd7c15cc36f9be47b96dbcd831e5806a2059d2417",
+      "imageHash": "17327ea890e085c8edfb756f08f1e01ea410ad12218737aa4339fb5ab8b3a0c9",
       "image": "/playground/keyed-list.png",
       "width": 640,
       "height": 400

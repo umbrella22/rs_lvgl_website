@@ -1,4 +1,4 @@
-// rs_lvgl_ui 0.6.0: compile against the pinned release or a matching local checkout.
+// rs_lvgl_ui 0.7.0: compile against the pinned release or a matching local checkout.
 // This snapshot preview maps actions to (); the library's form example handles state.
 use rs_lvgl_ui::components::{list::ListItem, panel::Panel};
 use rs_lvgl_ui::prelude::*;

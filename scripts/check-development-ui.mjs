@@ -27,7 +27,12 @@ async function identity() {
 const before = await identity();
 const layoutApi = await fs.readFile(path.join(librarySource, "rs_lvgl_ui/src/constructors/layout.rs"), "utf8");
 assert.ok(/pub fn container</.test(layoutApi), "requires the UI API from 0.6.0 or later");
+const uiManifest = await fs.readFile(path.join(librarySource, "rs_lvgl_ui/Cargo.toml"), "utf8");
+const apiVersion = uiManifest.match(/^version = "([^"]+)"/m)?.[1];
+assert.equal(apiVersion, "0.7.0", "migration examples require the matching 0.7.0 source");
 const claritySource = await fs.readFile(path.join(websiteRoot, "playground/development/api-clarity.rs"), "utf8");
+const depthSource = await fs.readFile(path.join(websiteRoot, "playground/development/capability-depth.rs"), "utf8");
+const customSource = await fs.readFile(path.join(websiteRoot, "playground/development/custom-props.rs"), "utf8");
 const source = await fs.readFile(path.join(websiteRoot, "playground/development/forms.rs"), "utf8");
 const controlsSource = await fs.readFile(path.join(websiteRoot, "playground/examples/controls.rs"), "utf8");
 const skillSource = await fs.readFile(path.join(librarySource, ".agents/skills/rs-lvgl-ui/references/form.rs"), "utf8");
@@ -119,7 +124,28 @@ fn view(_: &Theme) -> View<()> {
   {
     for (const locale of ["en", "zh"]) {
       const guide = await fs.readFile(path.join(websiteRoot, `docs/${locale}/guide/ui-api-migration.md`), "utf8");
-      assert.ok(guide.includes("```rust\n" + claritySource.trim() + "\n```"), `${locale} migration example must match compiled source`);
+      for (const snippet of [depthSource, customSource])
+        assert.ok(guide.includes("```rust\n" + snippet.trim() + "\n```"), `${locale} migration example must match compiled source`);
+    }
+    for (const [name, snippet] of [["capability-depth", depthSource], ["custom-props", customSource]]) {
+      for (const theme of ["light", "dark"]) {
+        const result = await renderer.render({ source: snippet, theme });
+        assert.equal(result.ok, true, JSON.stringify(result));
+        assert.equal(result.sourceHash, sha256(snippet));
+        const png = Buffer.from(result.image.split(",")[1], "base64");
+        await fs.writeFile(path.join(artifactRoot, `${name}-${theme}.png`), png);
+        cases.push({ name: `${name}-${theme}`, pixels: sha256(decodeNativePng(png).rgba) });
+      }
+    }
+    for (const [name, snippet, from, to] of [
+      ["old-chart", depthSource, "chart(ChartSpec::new(", "chart(ChartType::Line, 0, 100, ChartSpec::new("],
+      ["old-custom", customSource, "custom(Gauge, GaugeProps(65))", "custom(Gauge)"],
+    ]) {
+      assert.ok(snippet.includes(from));
+      const result = await renderer.render({ source: snippet.replace(from, to) });
+      assert.equal(result.kind, "compile");
+      assert.ok(result.diagnostics.some((item) => item.code === "E0061"), JSON.stringify(result));
+      cases.push({ name: `migration-reject-${name}`, expectedError: "E0061" });
     }
     for (const theme of ["light", "dark"]) {
       const result = await renderer.render({ source: claritySource, theme });
@@ -144,7 +170,8 @@ fn view(_: &Theme) -> View<()> {
   cases.push(...await verifyNativeGeometry({ renderer, claritySource, clarityRecipe, artifactRoot }));
   assert.equal(await identity(), before, "development native inputs changed during acceptance");
   await fs.writeFile(path.join(artifactRoot, "results.json"), JSON.stringify({
-    status: "passed", librarySource, apiFamily: "released-0.6.0", sourceIdentity: before, snippetHash: sha256(source), cases,
+    status: "passed", librarySource, apiFamily: `released-${apiVersion}`, sourceIdentity: before,
+    snippetHash: sha256(source), migrationHashes: [sha256(depthSource), sha256(customSource)], cases,
     limits: "Native snapshots and compiler diagnostics; online subset interpreter and device acceptance are separate.",
   }, null, 2) + "\n");
   console.log(`Passed ${cases.length} composition native Playground cases. Images: ${artifactRoot}`);

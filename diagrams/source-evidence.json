@@ -22,7 +22,7 @@
       "path": "rs_lvgl_ui/src/app/controller.rs",
       "line": 63,
       "endLine": 111,
-      "fileSha256": "abbd07072236d4e14cdc36d5510df9d4ea4659ab056278959888e01ac94ff9d5",
+      "fileSha256": "d133f5b121d482788d1df927b78b17b38f55314eb364b4b5ec754af4008d205a",
       "excerptSha256": "2f9bd4d863c559572d3ed2c5a3bcb2d873dccd4d79e0ad597ba9012b7ed9f8ab",
       "excerpt": "\n    /// Reconcile the application's first tree.\n    ///\n    /// Calling `mount` again reconciles against the existing mounted tree.\n    pub fn mount<A: App<Action = M>>(&mut self, app: &A) -> Result<(), UiError> {\n        let _guard = enter(&self.busy)?;\n        let tree = app.view(&self.theme);\n        let overlay = app.overlay(&self.theme);\n        self.render(tree, overlay)\n    }\n\n    /// Process at most `max_messages` queued messages, then reconcile once.\n    ///\n    /// When no message was processed and nothing marked the UI dirty, the\n    /// drain returns without calling `App::view`, so an idle main loop does\n    /// not rebuild and diff the whole tree. State that changes outside\n    /// messages (clocks, sensors read in `view`) must call\n    /// [`Ui::mark_dirty`] or [`Ui::update`].\n    pub fn drain<A: App<Action = M>>(\n        &mut self,\n        app: &mut A,\n        max_messages: usize,\n    ) -> Result<DrainStats, UiError> {\n        let _guard = enter(&self.busy)?;\n        let dropped_before = self.queue.dropped();\n        let mut processed = 0;\n        let mut requested = false;\n        while processed < max_messages {\n            let Some(message) = self.queue.pop() else {\n                break;\n            };\n            requested |= app.update_with_render(message) == RenderDecision::Reconcile;\n            processed += 1;\n        }\n        self.messages_processed += processed as u64;\n        let reconciled = requested || self.dirty || self.mounted.is_none();\n        if reconciled {\n            let tree = app.view(&self.theme);\n            let overlay = app.overlay(&self.theme);\n            self.render(tree, overlay)?;\n        }\n        Ok(DrainStats {\n            processed,\n            dropped: self.queue.dropped() - dropped_before,\n            reconciled,\n        })\n    }\n\n    /// Reconcile without processing queued messages.\n"
     },
@@ -37,16 +37,16 @@
     "descriptor": {
       "path": "rs_lvgl_ui/src/node/mod.rs",
       "line": 38,
-      "endLine": 70,
-      "fileSha256": "b3f5ad024624e0e578113fe05fe9f3c4ed857420734b80585762678f5929abc0",
-      "excerptSha256": "3bd99cf20c34b6841c79e7210fc920dc9a4a2f344fab89bb92039320a482cae1",
-      "excerpt": "/// The backing descriptor type for [`crate::View`].\n///\n/// Constructing a descriptor never touches LVGL. Application and component\n/// functions return [`crate::View`] and use ordinary constructors such as\n/// [`crate::column`], [`crate::label`] and [`crate::button`].\npub struct Node<M, K = crate::typed::Erased> {\n    pub(crate) marker: core::marker::PhantomData<fn() -> K>,\n    #[cfg(any(feature = \"diagnostics\", feature = \"strict-properties\"))]\n    invalid_property: Option<crate::Property>,\n    pub(crate) static_text: Option<&'static str>,\n    pub(crate) font_resource: Option<crate::FontResource>,\n    #[cfg(feature = \"widget-image\")]\n    pub(crate) image_resource: Option<crate::ImageResource>,\n    pub(crate) key: Key,\n    pub(crate) kind: WidgetKind,\n    pub(crate) style: Style,\n    pub(crate) part_styles: Vec<(Selector, Style)>,\n    pub(crate) keyboard_id: Option<u64>,\n    pub(crate) grid_cell: Option<GridCell>,\n    pub(crate) children: Vec<Node<M>>,\n    pub(crate) handlers: HandlerSet<M>,\n    pub(crate) clickable: Option<bool>,\n    pub(crate) scrollable: Option<bool>,\n    pub(crate) checked: Option<bool>,\n    pub(crate) interaction: crate::scroll::Interaction,\n    pub(crate) animations: Vec<crate::Animation>,\n    #[cfg(feature = \"input-keypad\")]\n    pub(crate) focusable: Option<bool>,\n    #[cfg(feature = \"input-keypad\")]\n    pub(crate) modal: bool,\n    #[cfg(feature = \"input-gridnav\")]\n    pub(crate) grid_navigation: Option<crate::GridNavigation>,\n}\n"
+      "endLine": 71,
+      "fileSha256": "f38549fa475a059eb5f80c5c2d0e29ccfe6276d75c3aeace74bb097626bde8c1",
+      "excerptSha256": "ebaf215fbf4a012b94b806f053054311d2a81b67ec0a9b4ad0ea2cfbdbc68a92",
+      "excerpt": "/// The backing descriptor type for [`crate::View`].\n///\n/// Constructing a descriptor never touches LVGL. Application and component\n/// functions return [`crate::View`] and use ordinary constructors such as\n/// [`crate::column`], [`crate::label`] and [`crate::button`].\npub struct Node<M, K = crate::typed::Erased> {\n    pub(crate) marker: core::marker::PhantomData<fn() -> K>,\n    #[cfg(any(feature = \"diagnostics\", feature = \"strict-properties\"))]\n    invalid_property: Option<crate::Property>,\n    pub(crate) static_text: Option<&'static str>,\n    pub(crate) font_resource: Option<crate::FontResource>,\n    #[cfg(feature = \"widget-image\")]\n    pub(crate) image_resource: Option<crate::ImageResource>,\n    pub(crate) key: Key,\n    pub(crate) kind: WidgetKind,\n    pub(crate) style: Style,\n    pub(crate) flex_flow: (bool, bool),\n    pub(crate) part_styles: Vec<(Selector, Style)>,\n    pub(crate) keyboard_id: Option<u64>,\n    pub(crate) grid_cell: Option<GridCell>,\n    pub(crate) children: Vec<Node<M>>,\n    pub(crate) handlers: HandlerSet<M>,\n    pub(crate) clickable: Option<bool>,\n    pub(crate) scrollable: Option<bool>,\n    pub(crate) checked: Option<bool>,\n    pub(crate) interaction: crate::scroll::Interaction,\n    pub(crate) animations: Vec<crate::Animation>,\n    #[cfg(feature = \"input-keypad\")]\n    pub(crate) focusable: Option<bool>,\n    #[cfg(feature = \"input-keypad\")]\n    pub(crate) modal: bool,\n    #[cfg(feature = \"input-gridnav\")]\n    pub(crate) grid_navigation: Option<crate::GridNavigation>,\n}\n"
     },
     "alias": {
       "path": "rs_lvgl_ui/src/lib.rs",
-      "line": 162,
-      "endLine": 168,
-      "fileSha256": "bc92507535f08d826aaaae6bfa97cc337c1e6f0e6013fa94cf3a9077902e1712",
+      "line": 176,
+      "endLine": 182,
+      "fileSha256": "842d2dafede1de92c3a0e550517ec6593d9aabfb6f1c906a0ea27eee6040fad8",
       "excerptSha256": "209a279cbaf57fe479e24f112d6eb0997c57a0988d22b488fc335b87746d8e1c",
       "excerpt": "/// A declarative view description returned by [`App::view`] and component functions.\n///\n/// [`Node`] is the backing descriptor type; `View` is an alias for that same type.\n/// Use ordinary\n/// constructors such as [`column()`], [`label()`] and [`button()`] to build views;\n/// constructing a view does not create any native LVGL objects.\npub type View<M> = Node<M>;\n"
     },
@@ -77,10 +77,10 @@
     "handlers": {
       "path": "rs_lvgl_ui/src/node/builders/events.rs",
       "line": 6,
-      "endLine": 46,
-      "fileSha256": "47330fac6b89841fdeccd63c34100d9bc18a523fe56b39652fbbd2a3a786a482",
-      "excerptSha256": "cf61ce1503adc1eec6387f02847ddc3ec22cf84cdfdd378951927dffd68d55c6",
-      "excerpt": "impl<M, K> Node<M, K> {\n    ///\n    /// Messages are cloned for every click, so `M` must implement `Clone`.\n    /// Handlers are independent: this can be combined with the other `on_*`\n    /// builders; calling the same builder twice replaces that handler only.\n    pub fn on_click(mut self, action: M) -> Self\n    where\n        M: Clone,\n    {\n        self.handlers.click = Some(action);\n        self\n    }\n\n    /// Map a value-changed event to a message.\n    ///\n    /// The value is read from the native widget after the change: the value\n    /// of sliders, bars and arcs; `1`/`0` for checked/unchecked switches and\n    /// checkboxes; the selected index of dropdowns and rollers; the value of\n    /// spinboxes; the active tab index of tabviews; the active tile index of\n    /// tileviews (`-1` before any tile is active); the pressed date of\n    /// calendars packed by [`CalendarDate::to_value`](crate::CalendarDate::to_value) (`-1` when none); the\n    /// clicked footer button index of message boxes. Other kinds pass the\n    /// value documented on their [`WidgetKind`](crate::WidgetKind) variant, or `0`.\n    pub fn on_value_changed<F>(mut self, mut map: F) -> Self\n    where\n        K: crate::typed::Supports<crate::typed::capability::Numeric>,\n        F: FnMut(i32) -> M + 'static,\n    {\n        self.handlers.value_changed = Some(Box::new(move |value| value.legacy().map(&mut map)));\n        self\n    }\n\n    /// Map the checked state of a switch or checkbox. Replaces the value handler.\n    pub fn on_toggle<F>(mut self, mut map: F) -> Self\n    where\n        K: crate::typed::Supports<crate::typed::capability::Toggle>,\n        F: FnMut(bool) -> M + 'static,\n    {\n        self.handlers.value_changed = Some(Box::new(move |value| match value {\n            crate::events::ControlValue::Toggle(checked) => Some(map(checked)),\n            _ => None,\n"
+      "endLine": 67,
+      "fileSha256": "8e2590cc38abbffa1b937cbd523b04bb33b6c21a7102aff7b41a16d7b6e09d6f",
+      "excerptSha256": "5bc9f8516e9bbc432eacc64694b28b562b0549a605c1dc28c9f971a5f783b187",
+      "excerpt": "impl<M, K> Node<M, K> {\n    ///\n    /// Messages are cloned for every click, so `M` must implement `Clone`.\n    /// Handlers are independent: this can be combined with the other `on_*`\n    /// builders; calling the same builder twice replaces that handler only.\n    pub fn on_click(mut self, action: M) -> Self\n    where\n        M: Clone,\n    {\n        self.handlers.click = Some(action);\n        self\n    }\n\n    /// Copy both native slider endpoints into one action. Replaces the shared\n    /// value handler; click, text and generic event slots remain independent.\n    #[cfg(feature = \"widget-slider\")]\n    pub fn on_range_changed<F>(mut self, mut map: F) -> Self\n    where\n        K: crate::typed::Supports<crate::typed::capability::Range>,\n        F: FnMut(crate::SliderRange) -> M + 'static,\n    {\n        if !matches!(self.kind, crate::WidgetKind::RangeSlider { .. }) {\n            self.record_invalid_property(crate::Property::Range);\n        }\n        self.handlers.value_changed = Some(Box::new(move |value| match value {\n            crate::events::ControlValue::Range(range) => Some(map(range)),\n            _ => None,\n        }));\n        self\n    }\n\n    /// Map a value-changed event to a message.\n    ///\n    /// The value is read from the native widget after the change: the value\n    /// of sliders, bars and arcs; `1`/`0` for checked/unchecked switches and\n    /// checkboxes; the selected index of dropdowns and rollers; the value of\n    /// spinboxes; the active tab index of tabviews; the active tile index of\n    /// tileviews (`-1` before any tile is active); the pressed date of\n    /// calendars packed by [`CalendarDate::to_value`](crate::CalendarDate::to_value) (`-1` when none); the\n    /// clicked footer button index of message boxes. Other kinds pass the\n    /// value documented on their [`WidgetKind`](crate::WidgetKind) variant, or `0`.\n    pub fn on_value_changed<F>(mut self, mut map: F) -> Self\n    where\n        K: crate::typed::Supports<crate::typed::capability::Numeric>,\n        F: FnMut(i32) -> M + 'static,\n    {\n        self.handlers.value_changed = Some(Box::new(move |value| value.legacy().map(&mut map)));\n        self\n    }\n\n    /// Map the checked state of a switch or checkbox. Replaces the value handler.\n    pub fn on_toggle<F>(mut self, mut map: F) -> Self\n    where\n        K: crate::typed::Supports<crate::typed::capability::Toggle>,\n        F: FnMut(bool) -> M + 'static,\n    {\n        self.handlers.value_changed = Some(Box::new(move |value| match value {\n            crate::events::ControlValue::Toggle(checked) => Some(map(checked)),\n            _ => None,\n        }));\n        self\n    }\n"
     },
     "config": {
       "path": "rs_lvgl_sys/build.rs",
@@ -134,7 +134,7 @@
       "path": "rs_lvgl_ui/Cargo.toml",
       "line": 21,
       "endLine": 44,
-      "fileSha256": "f2d39c1052f2a2be5394c4fb5c898bfdc35de1ea5a8ea58c0963cb59ff0a6de2",
+      "fileSha256": "d8b803511b3c2e67d4ff5b55962434bd47712d96295cae4d1e99f471f9db3eab",
       "excerptSha256": "7ea0f8db35bdf0aaabbcb935f544e8bf62fe17c68287573b5fd5164d5f27e631",
       "excerpt": "[features]\n# `alloc` is the only capability required on bare-metal targets. It enables the\n# allocator-aware parts of the `rs_lvgl` crate; `rs_lvgl_ui` itself always requires\n# `alloc`.\ndefault = [\"alloc\", \"components\", \"widgets-all\", \"fonts-vendored\"]\nalloc = [\"rs_lvgl/alloc\"]\n# Composite components (`rs_lvgl_ui::components`): lists, panels, stack\n# navigation, dialogs and toasts built from plain nodes.\ncomponents = []\n# Acceptance-only static text comparison; production defaults are unchanged.\ncost-static-text = [\"update-metrics\"]\nupdate-metrics = []\n# Optional path diagnostics; strict rejection of ignored modifiers is opt-in.\ndiagnostics = []\nstrict-properties = []\ninput-keypad = [\"rs_lvgl/input-keypad\"]\ninput-gridnav = [\"input-keypad\", \"rs_lvgl_sys/gridnav\"]\n# Host acceptance harness; requires the dedicated BUILTIN allocator config.\n# This does not select an allocator or change production defaults.\nleak-check = [\n    \"alloc\", \"components\", \"widgets-all\", \"fonts-vendored\", \"input-gridnav\",\n    \"widget-qrcode\", \"widget-barcode\", \"widget-gif\", \"widget-lottie\",\n    \"widget-ime-pinyin\", \"font-cjk-16\",\n]\n"
     },
@@ -142,7 +142,7 @@
       "path": "rs_lvgl_ui/Cargo.toml",
       "line": 112,
       "endLine": 119,
-      "fileSha256": "f2d39c1052f2a2be5394c4fb5c898bfdc35de1ea5a8ea58c0963cb59ff0a6de2",
+      "fileSha256": "d8b803511b3c2e67d4ff5b55962434bd47712d96295cae4d1e99f471f9db3eab",
       "excerptSha256": "225219f5ff5bf1c8b8b0a36123d04a497fc24a23ae534392918759b55630e7a8",
       "excerpt": "# Optional extensions are separate from widgets-all to preserve defaults.\nwidget-qrcode = [\"rs_lvgl_sys/widget-qrcode\"]\nwidget-barcode = [\"rs_lvgl_sys/widget-barcode\"]\nwidget-gif = [\"rs_lvgl_sys/widget-gif\"]\nwidget-lottie = [\"rs_lvgl_sys/widget-lottie\"]\nwidget-ime-pinyin = [\"rs_lvgl_sys/widget-ime-pinyin\", \"widget-keyboard\"]\nfont-cjk-14 = [\"rs_lvgl_sys/font-cjk-14\"]\nfont-cjk-16 = [\"rs_lvgl_sys/font-cjk-16\"]\n"
     },
@@ -157,10 +157,10 @@
     "exports": {
       "path": "rs_lvgl_ui/src/lib.rs",
       "line": 91,
-      "endLine": 167,
-      "fileSha256": "bc92507535f08d826aaaae6bfa97cc337c1e6f0e6013fa94cf3a9077902e1712",
-      "excerptSha256": "1ae64a73fd732ca1ce89e99d5c60bde6187f574f69e90c5395c07cb1fbaf2450",
-      "excerpt": "extern crate alloc;\n\nmod app;\npub mod binding;\npub use binding::{binding, Binding};\nmod constructors;\npub use constructors::*;\n#[cfg(feature = \"components\")]\npub mod components;\nmod custom;\nmod diagnostics;\nmod events;\n#[cfg(feature = \"update-metrics\")]\nmod metrics;\nmod resources;\npub mod typed;\npub use diagnostics::Property;\n#[cfg(feature = \"diagnostics\")]\npub use diagnostics::{DiagnosticEvent, DiagnosticSink, DiagnosticStage, DiagnosticTree};\n#[cfg(feature = \"update-metrics\")]\npub use metrics::{update_metrics, UpdateMetrics};\n#[cfg(feature = \"widget-image\")]\npub use resources::ImageResource;\npub use resources::{resource_support, FontResource, ResourceError, ResourceSupport};\n#[cfg(feature = \"diagnostics\")]\npub use widgets::KindTag as WidgetType;\n#[cfg(feature = \"input-keypad\")]\nmod focus;\n#[cfg(feature = \"input-gridnav\")]\nmod gridnav;\npub mod prelude;\n#[cfg(feature = \"input-gridnav\")]\npub use gridnav::{GridNavigation, NavigationAxis};\nmod extensions;\nmod node;\nmod reconciler;\nmod scroll;\npub use extensions::*;\nmod graphics;\npub use graphics::Snapshot;\n#[cfg(feature = \"widget-canvas\")]\nmod canvas;\n#[cfg(feature = \"widget-canvas\")]\npub use canvas::{Canvas, DrawCommand};\nmod screens;\npub use screens::{ScreenEffect, ScreenTransition, Screens};\npub mod symbol;\nmod theme;\nmod widgets;\n\npub use app::{App, DrainStats, RenderDecision, Ui, UiStats};\npub use custom::{CustomObject, CustomWidget, CustomWidgetKind};\npub use events::{Event, GestureDirection, InputEvent, PointerEvent, ScrollOffset};\npub use events::{PostOutcome, QueueOverflow, QueuePolicy, QueueStats};\npub use node::{\n    table_cell, Align, CalendarDate, ChartSeries, ChartType, Color, EventHandler, FlexAlign, Font,\n    GridAlign, GridCell, GridTrack, Handlers, ImageSource, ItemAlign, Key, NativePart, Node,\n    RawImage, RollerMode, ScrollDirection, Size, Span, State, TableCell, TextAlign,\n    TextChangedHandler, TextOverflow, Tile, ValueChangedHandler, WidgetKind,\n    ANIMATED_IMAGE_MAX_FRAMES, ANIMATION_REPEAT_INFINITE, SPINBOX_MAX_DIGITS,\n    TABLE_MAX_CELLS_PER_AXIS,\n};\npub use scroll::{ScrollSnap, ScrollbarMode};\nmod animation;\npub use animation::{Animation, AnimationProperty, Easing, StyleTransition, TransitionProperty};\nmod units;\npub use units::{Angle, Scale};\nmod style_properties;\npub use style_properties::{BlendMode, GradientDirection, TextDecoration};\npub use theme::{Style, Theme};\n\n/// A declarative view description returned by [`App::view`] and component functions.\n///\n/// [`Node`] is the backing descriptor type; `View` is an alias for that same type.\n/// Use ordinary\n/// constructors such as [`column()`], [`label()`] and [`button()`] to build views;\n/// constructing a view does not create any native LVGL objects.\n"
+      "endLine": 182,
+      "fileSha256": "842d2dafede1de92c3a0e550517ec6593d9aabfb6f1c906a0ea27eee6040fad8",
+      "excerptSha256": "53246dd0bc9a20fc42a71f86e972057d26bcfe437e79f1359793820e8cd763e3",
+      "excerpt": "extern crate alloc;\n\nmod app;\npub mod binding;\npub use binding::{binding, Binding};\nmod constructors;\npub use constructors::*;\n#[cfg(feature = \"components\")]\npub mod components;\nmod custom;\n#[cfg(feature = \"widget-chart\")]\nmod chart;\n#[cfg(feature = \"widget-chart\")]\nmod chart_history;\n#[cfg(feature = \"widget-chart\")]\npub use chart::{ChartAxes, ChartAxis, ChartCursor, ChartCursorDirection, ChartCursorTarget, ChartData, ChartRange, ChartSeries, ChartSpec, ChartType, ChartUpdateMode, ChartValue};\n#[cfg(feature = \"widget-textarea\")]\nmod text_options;\n#[cfg(feature = \"widget-textarea\")]\npub use text_options::TextareaInputOptions;\n#[cfg(feature = \"widget-slider\")]\nmod range;\n#[cfg(feature = \"widget-slider\")]\npub use range::SliderRange;\nmod diagnostics;\nmod events;\n#[cfg(feature = \"update-metrics\")]\nmod metrics;\nmod resources;\npub mod typed;\npub use diagnostics::Property;\n#[cfg(feature = \"diagnostics\")]\npub use diagnostics::{DiagnosticEvent, DiagnosticSink, DiagnosticStage, DiagnosticTree};\n#[cfg(feature = \"update-metrics\")]\npub use metrics::{update_metrics, UpdateMetrics};\n#[cfg(feature = \"widget-image\")]\npub use resources::ImageResource;\npub use resources::{resource_support, FontResource, ResourceError, ResourceSupport};\n#[cfg(feature = \"diagnostics\")]\npub use widgets::KindTag as WidgetType;\n#[cfg(feature = \"input-keypad\")]\nmod focus;\n#[cfg(feature = \"input-gridnav\")]\nmod gridnav;\npub mod prelude;\n#[cfg(feature = \"input-gridnav\")]\npub use gridnav::{GridNavigation, NavigationAxis};\nmod extensions;\nmod node;\nmod reconciler;\nmod scroll;\npub use extensions::*;\nmod graphics;\npub use graphics::Snapshot;\n#[cfg(feature = \"widget-canvas\")]\nmod canvas;\n#[cfg(feature = \"widget-canvas\")]\npub use canvas::{Canvas, DrawCommand};\nmod screens;\npub use screens::{ScreenEffect, ScreenTransition, Screens};\npub mod symbol;\nmod theme;\nmod widgets;\n\npub use app::{App, DrainStats, RenderDecision, Ui, UiStats};\npub use custom::{CustomObject, CustomWidget, CustomWidgetKind};\npub use events::{Event, GestureDirection, InputEvent, PointerEvent, ScrollOffset};\npub use events::{PostOutcome, QueueOverflow, QueuePolicy, QueueStats};\npub use node::{\n    table_cell, Align, CalendarDate, Color, EventHandler, FlexAlign, Font,\n    GridAlign, GridCell, GridTrack, Handlers, ImageSource, ItemAlign, Key, NativePart, Node,\n    RawImage, RollerMode, ScrollDirection, Size, Span, State, TableCell, TextAlign,\n    TextChangedHandler, TextOverflow, Tile, ValueChangedHandler, WidgetKind,\n    ANIMATED_IMAGE_MAX_FRAMES, ANIMATION_REPEAT_INFINITE, SPINBOX_MAX_DIGITS,\n    TABLE_MAX_CELLS_PER_AXIS,\n};\npub use scroll::{ScrollSnap, ScrollbarMode};\nmod animation;\npub use animation::{Animation, AnimationProperty, Easing, StyleTransition, TransitionProperty};\nmod units;\npub use units::{Angle, Scale};\nmod style_properties;\npub use style_properties::{BlendMode, GradientDirection, TextDecoration};\npub use theme::{Style, Theme};\n\n/// A declarative view description returned by [`App::view`] and component functions.\n///\n/// [`Node`] is the backing descriptor type; `View` is an alias for that same type.\n/// Use ordinary\n/// constructors such as [`column()`], [`label()`] and [`button()`] to build views;\n/// constructing a view does not create any native LVGL objects.\npub type View<M> = Node<M>;\n"
     },
     "display": {
       "path": "website/playground/browser.rs",
@@ -180,9 +180,9 @@
     },
     "suppress-write": {
       "path": "rs_lvgl_ui/src/widgets/properties/mod.rs",
-      "line": 146,
-      "endLine": 160,
-      "fileSha256": "e8a73827e9fa19d1708e35fe0101102bca4d6213431c69c708f77e5dfcb171ef",
+      "line": 145,
+      "endLine": 159,
+      "fileSha256": "867c1df4dbfe11ec955eced24aa065f6c34feba2e32978c296279dbd21f52c20",
       "excerptSha256": "75bbea0a6b400368b191eb7002ac4c50aec1206b472212d604ace0836ae9646a",
       "excerpt": "/// Suppress feedback from one synchronous programmatic write.\n/// The native slot remains attached to its live object for the entire call.\npub(crate) fn suppress<M: Clone + 'static, R>(\n    slot: Option<&HandlerSlot<M>>,\n    write: impl FnOnce() -> R,\n) -> R {\n    if let Some(slot) = slot {\n        slot.suppress();\n        let result = write();\n        slot.clear_suppress();\n        result\n    } else {\n        write()\n    }\n}\n"
     },
@@ -336,5 +336,20 @@
         "time"
       ]
     }
+  },
+  "review": {
+    "release": "0.7.0",
+    "sourceCommit": "79f25870747aa9b0d7a95794a237d51f7746b915",
+    "updatedReferences": [
+      "drain",
+      "descriptor",
+      "alias",
+      "handlers",
+      "features",
+      "extensions",
+      "exports",
+      "suppress-write"
+    ],
+    "result": "The diagrams retain their App/View/Ui, message, build and additive-feature claims. Source ranges include the new flow, range handler and gated exports; diagram content and rendering are unchanged."
   }
 }

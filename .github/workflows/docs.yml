@@ -93,6 +93,8 @@ jobs:
             target/development-ui/results.json
             target/development-ui/forms-*.png
             target/development-ui/api-clarity-*.png
+            target/development-ui/capability-depth-*.png
+            target/development-ui/custom-props-*.png
             target/development-ui/geometry/
           if-no-files-found: warn
           retention-days: 7

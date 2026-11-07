@@ -10,7 +10,7 @@ matching translation.
 ## Build from a clean checkout
 
 This repository publishes its own GitHub Pages site at `/rs_lvgl_website/`.
-The `source/` submodule pins rs_lvgl 0.6.0 (`v0.6.0`), vendored LVGL, native configuration and
+The `source/` submodule pins rs_lvgl 0.7.0 (`v0.7.0`), vendored LVGL, native configuration and
 desktop studio used by the browser consumers. Builds use that revision without
 requiring a separate library checkout next to this repository.
 
@@ -69,7 +69,7 @@ and example runtimes retain their own existing lifecycle behavior.
 ## Component preview
 
 `/studio` (English: `/en/studio`) runs the complete Rust/LVGL component studio
-in WebAssembly. All nine categories share their views and update functions with
+in WebAssembly. All eleven categories share their views and update functions with
 `rs_lvgl_ui/examples/studio.rs`. The native sidebar, Reset and Dark mode controls
 operate the application directly. Source excerpts follow the selected category;
 there is no duplicate HTML toolbar. Closing the studio or a load failure reveals
@@ -337,7 +337,7 @@ compilation remains available through the optional local service.
 
 ## Composition and form previews
 
-Examples and browser assets follow the pinned 0.6.0 `source/` checkout.
+Examples and browser assets follow the pinned 0.7.0 `source/` checkout.
 Run `npm run check-development-ui -- --source ./source` to validate composition,
 slots and bindings with the native compiler. The check renders
 `playground/development/forms.rs`, measures native drawing bounds in both themes,

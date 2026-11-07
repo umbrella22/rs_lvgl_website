@@ -45,7 +45,7 @@ export function BrowserStudio({ children }: { children: ReactNode }) {
         <CodeBlockRuntime key={page} lang="rust" code={source.source} title={`${source.file}:${source.line}`} lineNumbers />
       </details>
       <div className="browser-studio__notes">
-        <p>{en ? "Nine categories include native controls, text and Pinyin input, charts, layouts, GIF/Lottie, canvas motion, dialogs, navigation and raw native widgets. Use the in-canvas sidebar to switch pages; the source excerpt follows your selection." : "九个分类覆盖基础控件、文本与拼音输入、图表、布局、GIF/Lottie、画布动画、对话框、导航和原生控件。通过画布内侧栏切换分类，下方源码会同步更新。"}</p>
+        <p>{en ? "Eleven categories include native controls, text and Pinyin input, charts, layouts, GIF/Lottie, canvas motion, dialogs, navigation and raw native widgets, plus control and chart depth examples. Use the in-canvas sidebar to switch pages; the source excerpt follows your selection." : "十一个分类覆盖基础控件、文本与拼音输入、图表、布局、GIF/Lottie、画布动画、对话框、导航和原生控件，以及控件与图表深度示例。通过画布内侧栏切换分类，下方源码会同步更新。"}</p>
         <p>{en ? "The studio is precompiled WebAssembly and works on static hosting. The playground supports browser editing for a documented Rust subset, with an optional local compiler for full Rust. The browser canvas demonstrates LVGL rendering and interaction; device drivers and physical displays are validated on their target hardware." : "组件工作台使用预编译 WebAssembly，静态网站也能运行。演练场支持在浏览器中修改一部分 Rust 语法，也提供可选的本地完整编译模式。浏览器画布展示 LVGL 的渲染与交互，设备驱动和物理屏幕仍在对应硬件上验证。"}</p>
       </div>
     </div>

@@ -1,113 +1,180 @@
 ---
-title: UI 0.6.0 migration
-description: Migrate from rs_lvgl_ui 0.5.0 to 0.6.0 with unified names, explicit transform units, independent flex alignment and semantic widget parts.
+title: UI 0.7.0 migration
+description: Migrate from rs_lvgl_ui 0.6.0 to 0.7.0 with ChartSpec, stable series, property-aware custom widgets, controlled range sliders and textarea editing options.
 ---
 
-# UI 0.6.0 migration
+# UI 0.7.0 migration
 
-Version 0.6.0 introduces breaking UI changes relative to 0.5.0. Install
-`rs_lvgl_ui = "0.6.0"` and migrate the names, units, layouts and widget parts below.
-The website's `source/` pins the same release. Studio runs the compiled library;
-the online Playground supports a bounded Rust subset, including the renamed
-container/progress constructors, plain styles and independent alignment. Typed
-construction, transform units and part styles in the complete example require
-the native Rust compiler.
+Version 0.7.0 replaces chart and custom-widget construction. Upgrade direct
+`rs_lvgl`, `rs_lvgl_sys`, `rs_lvgl_codegen` and `rs_lvgl_ui` dependencies together
+where present. Migrate callers to the single new interface for each widget.
 
-From the website checkout, validate the pinned release with:
-
-```sh
-npm run check-development-ui -- --source ./source
+```toml
+[dependencies]
+rs_lvgl = { version = "0.7.0", default-features = false, features = ["alloc"] }
+rs_lvgl_ui = "0.7.0"
 ```
 
-The command records the selected source identity, compiles the example below
-with real Rust/LVGL, renders both themes, and checks deliberate unit/capability
-errors. Results and images are in `target/development-ui/`.
+The native provider remains vendored LVGL 9.6. Default features and the existing
+explicit units, Flex alignment and widget-part names remain available. Projects
+coming from 0.5.0 or earlier should first apply the
+[historical 0.6.0 migration](https://github.com/umbrella22/rs_lvgl/blob/v0.6.0/docs/ui-api-migration.md).
 
-## Names
+## Replace chart descriptions
 
-| 0.5.0 | 0.6.0 |
+| 0.6.0 | 0.7.0 |
 | --- | --- |
-| obj, bar, msgbox, anim_image | container, progress_bar, message_box, animated_image; ordinary and typed |
-| typed::kind::Obj/Bar/Msgbox/AnimImage | Container/ProgressBar/MessageBox/AnimatedImage |
-| ScrollDir / scroll_dir / HOR / VER | ScrollDirection / scroll_direction / HORIZONTAL / VERTICAL |
-| TopMid / BottomMid / LeftMid / RightMid | TopCenter / BottomCenter / CenterLeft / CenterRight |
-| LabelLongMode / Dots / ScrollCircular | TextOverflow / Ellipsis / ScrollLoop; label.text_overflow |
-| Style::neutral | Style::plain; unchanged explicit base values |
-| msgbox_title/buttons / spinner_anim / anim_duration | message_box_title/buttons / spinner_animation / animation_duration |
-| bg_grad_color/dir, bg_main_stop/bg_grad_stop | background_gradient_color/direction, background_gradient_start/end |
-| bg_main_opacity/bg_grad_opacity | background_gradient_start_opacity/end_opacity |
-| text_letter_space/text_line_space / outline_pad | letter_spacing/line_spacing / outline_offset |
-| image_recolor/image_recolor_opacity | image_tint/image_tint_opacity |
-| Part / part_style / part_state_style | NativePart / native_part_style / native_part_state_style |
+| `chart(kind, min, max, series)` | `chart(ChartSpec::new(kind, axes, series))`; also `typed::chart(spec)` |
+| `ChartSeries { color, values }` | `ChartSeries::new(stable_id, color, ChartData::values(values))` |
+| Constructor min/max arguments | Explicit `ChartAxes` with primary/secondary X/Y `ChartRange` values |
+| Implicit series identity by position | Stable IDs for logical signals; `.axes(x_axis, y_axis)` selects each coordinate independently |
 
-Old paths are removed without aliases. Native feature names and low-level
-rs_lvgl names retain their API. A message box remains inline, with no new modal
-contract. Ordinary containers/labels already apply plain base values; set local
-fields directly. Keep explicit plain resets when they intentionally remove a
-control's native surface or overwrite previous fields. Plain is not an empty
-patch or a complete reset; extended styles and inherited text remain unset.
+Choose an explicit X range even for a chart using sample slots. Line, Bar,
+Stacked and Curve use Y samples; Scatter uses XY samples. Curve requires the
+effective native `LV_USE_VECTOR_GRAPHIC` capability. `ChartValue::Missing`
+represents a gap; `i32::MAX` is reserved. Duplicate IDs, invalid ranges,
+inconsistent lengths and incompatible sample kinds reject the render before
+native mutation. Bar requires complete samples; Stacked also rejects negative
+values, mixed Y axes and cumulative overflow.
 
-## Units, placement and parts
+For streaming data, keep `ChartHistory` in application state and pass
+`ChartData::History(history.snapshot())`. History has an explicit epoch,
+nonzero capacity and sample kind. Shift and Circular choose displayed ordering.
+Appends require matching metadata and retained overlap; gaps, changed capacity,
+replacement and remount recover by full synchronization. Snapshot creation copies
+retained data; compare costs with the application's batch size rather than
+assuming a frame-rate improvement. A `ChartCursor` uses its own stable ID and a
+pixel or series/point target.
 
-Use Scale::percent(50) for half size, Scale::ratio(n,d) for exact ratios, and
-Angle::degrees(90) or Angle::tenths(455) for angles. Scales round to native 1/256,
-ties upward; ratio rejects zero denominator or native overflow. Native scales
-are 0..=65535; image scales additionally reject zero. Rotation is checked against
--32768..=32767 tenths before mutation. Typed Animation::rotation/scale_x/scale_y
-replace raw Rotation/ScaleX/ScaleY endpoints; scalar animations remain. Spinner
-sweep stays whole degrees. The library's `docs/ui-api-migration.md` gives the
-complete mapping, including transition/diagnostic variants and constants.
+## Use controlled range and text input
 
-Replace flex_align(main,cross) with justify_content(main), align_items(cross as
-ItemAlign), and align_content(cross as FlexAlign) to preserve existing placement.
-The three properties merge independently. ItemAlign supports Start/Center/End;
-align_content maps native track placement, including single-line containers.
-Floating keeps both layout and parent-scroll exclusion; CSS stretch/absolute
-semantics are not implied.
+`range_slider(min, max, SliderRange::new(lower, upper))` emits both endpoints
+through `on_range_changed`. Typed construction also accepts `binding`.
+Unordered or out-of-domain endpoints reject; the constructor does not sort or
+clamp them. An ignored edit is restored from the model on reconciliation.
 
-Thumb styles support Slider/Switch. Progress styles support Slider/ProgressBar.
-Other parts use NativePart explicitly; Arc's indicator has its own meaning.
-Typed misuse fails a capability bound; erased misuse follows diagnostics/strict.
-A later patch for the same part/state replaces the whole earlier patch; combine
-fields in one patch. Removing a selector restores native/base values.
+Textarea modifiers configure editing: `accepted_chars`,
+`input_max_length(Option<NonZeroU32>)`, `cursor_position(Option<u32>)` and
+`cursor_click_position(bool)`. Lengths and cursor positions count Unicode scalar
+values. `None` removes the length limit; there is no zero-length-limit sentinel.
+The application model remains authoritative: filters do not truncate the full
+model string during reconciliation. Manual `WidgetKind::Textarea` literals must
+supply the new `input: Option<Box<TextareaInputOptions>>` field; prefer builders
+for the opaque settings.
 
-## Compiled local example
+Flex `.flex_wrap(bool)` and `.flex_reverse(bool)` select native flow independently.
+Stable keys and descriptor child order retain their meaning. This complete view
+fragment compiles against the pinned 0.7.0 source:
 
 ```rust
-// rs_lvgl_ui 0.6.0; validate with check-development-ui against the pinned source.
+// rs_lvgl_ui 0.7.0; validate with check-development-ui against the pinned source.
+use core::num::NonZeroU32;
 use rs_lvgl_ui::prelude::*;
 
 fn view(theme: &Theme) -> View<()> {
     column([
-        label("Fan settings").font(theme.title_font).text_color(theme.text)
-            .text_overflow(TextOverflow::Ellipsis),
+        label("Sensor controls").font(theme.title_font),
         row([
-            typed::slider(0, 100, 50).width(px(240)).height(px(16))
-                .thumb_style(style().background(theme.accent))
-                .progress_style(style().background(theme.accent)).into_view(),
-            typed::switch(true).into_view(),
-        ]).width(percent(100)).padding(16)
-            .justify_content(FlexAlign::SpaceBetween)
-            .align_items(ItemAlign::Center).align_content(FlexAlign::Center),
-        progress_bar(0, 100, 50).width(percent(100))
-            .progress_style(style().background(theme.accent)),
-        container().width(px(64)).height(px(64)).child(
-            container().width(px(24)).height(px(24)).align(Align::Center)
-                .background(theme.accent)
-                .transform_scale_x(Scale::percent(150))
-                .transform_scale_y(Scale::percent(150))
-                .transform_pivot_x(12).transform_pivot_y(12)
-                .transform_rotation(Angle::degrees(45)),
-        ),
-        message_box("Changes apply after Save.").message_box_title("Inline message"),
-    ]).width(percent(100)).height(percent(100))
-        .background(theme.background).text_color(theme.text).padding(24).gap(16)
-        .scroll_direction(ScrollDirection::VERTICAL)
+            typed::range_slider(0, 100,
+                binding(SliderRange::new(20, 70), |_: SliderRange| ()))
+                .width(px(220)).height(px(18)).into_view(),
+            typed::textarea(binding("42", |_: &str| ()))
+                .accepted_chars("0123456789")
+                .input_max_length(NonZeroU32::new(4))
+                .cursor_position(Some(2)).cursor_click_position(false)
+                .width(px(160)).height(px(52)).into_view(),
+        ]).flex_wrap(true).flex_reverse(false)
+            .align_items(ItemAlign::Center).gap(24).padding(16),
+        chart(ChartSpec::new(
+            ChartType::Line,
+            ChartAxes::new(ChartRange::new(0, 100), ChartRange::new(0, 100)),
+            vec![ChartSeries::new(
+                7, theme.accent, ChartData::values([20, 45, 30, 70]),
+            )],
+        )).width(px(420)).height(px(140)).key(Key::Named("readings")),
+    ]).width(percent(100)).height(percent(100)).padding(24).gap(16)
+        .background(theme.background).text_color(theme.text)
 }
 ```
 
-The thumb color patch retains LVGL's circular geometry. A fixed radius changes
-the contour even when its width and height stay the same. The square uses equal
-150% scales and a centered pivot; its 64 px slot reserves space for all four
-rotated corners without overlapping the following message box. The two scale
-axes remain independent for designs that require stretching.
+Enable the matching `widget-slider`, `widget-textarea` and `widget-chart` features
+when disabling defaults. The native compiler validates this example; the online
+Playground interpreter supports a smaller Rust subset.
+
+## Deliver custom properties explicitly
+
+| 0.6.0 | 0.7.0 |
+| --- | --- |
+| `custom(widget)` | `custom(widget, props)` |
+| `create(parent)` | Associated `type Props` and `create(parent, &Props)` |
+| `update(object, elapsed_ms)` | `apply_props(object, &Props)` for model input; `tick(object, elapsed_ms)` for time |
+| Shared state or key changes to force refresh | Current properties delivered to the mounted instance on every compatible reconciliation |
+
+Implement `apply_props` even for `Props = ()`. Pure `validate` runs before either
+main or overlay mutates. A matching key and concrete type retains the widget;
+changing either replaces it. `Ui::tick` advances only `tick`.
+
+```rust
+// rs_lvgl_ui 0.7.0 custom properties; native Rust compilation is required.
+use core::ptr::NonNull;
+use rs_lvgl::{sys, NativeObject};
+use rs_lvgl_ui::prelude::*;
+
+struct Gauge;
+struct GaugeProps(i32);
+
+impl CustomWidget for Gauge {
+    type Props = GaugeProps;
+
+    fn validate(props: &GaugeProps) -> Result<(), UiError> {
+        if (0..=100).contains(&props.0) { Ok(()) }
+        else { Err(UiError::InvalidProperty) }
+    }
+
+    fn create(&mut self, parent: &mut Obj<'_>, _: &GaugeProps)
+        -> Result<CustomObject, UiError>
+    {
+        // SAFETY: this hook creates one live direct child for the mounted owner.
+        unsafe {
+            let child = NonNull::new(sys::lv_arc_create(parent.raw().as_ptr()))
+                .ok_or(UiError::Allocation)?;
+            CustomObject::new(parent, child)
+        }
+    }
+
+    fn apply_props(&mut self, object: &mut CustomObject, props: &GaugeProps)
+        -> Result<(), UiError>
+    {
+        // SAFETY: this hook exclusively borrows its live arc on the UI thread.
+        unsafe { sys::lv_arc_set_value(object.raw().as_ptr(), props.0); }
+        Ok(())
+    }
+
+    fn delete(&mut self, _: &mut CustomObject) {
+        // No external registrations or retained buffers to retire in this widget.
+    }
+}
+
+fn view(theme: &Theme) -> View<()> {
+    column([custom(Gauge, GaugeProps(65)).key(Key::Named("gauge"))])
+        .padding(24).width(percent(100)).height(percent(100))
+        .background(theme.background).text_color(theme.text)
+}
+```
+
+A successful property application must retire native references to previous
+properties. If application partially fails, old and incoming properties remain
+alive until native deletion completes. `delete` runs once while the root is live;
+it retires external registrations and must not delete the root or reenter `Ui`.
+A failed `create` cleans up its own partial construction. Native callbacks must
+not unwind across C. The raw pointer and teardown contracts remain in force.
+
+## Verify the upgraded application
+
+Run native tests serially, check disabled widget/layout configurations and
+`no_std` where used, and exercise accepted/rejected input plus custom deletion on
+the actual target. The website runs `check-development-ui` against its pinned
+release, including both examples above and old-signature rejection controls.
+For a complete native memory-display program and detailed limits, see
+[capability-depth.rs](https://github.com/umbrella22/rs_lvgl/blob/v0.7.0/.agents/skills/rs-lvgl-ui/references/capability-depth.rs)
+and the [capability guide](https://github.com/umbrella22/rs_lvgl/blob/v0.7.0/docs/ui-capability-depth.md).

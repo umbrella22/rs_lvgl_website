@@ -4,7 +4,7 @@ description: Build and test the workspace, and maintain generators, native confi
 ---
 
 
-For the 0.5.0 to 0.6.0 changes, see [UI 0.6.0 migration](./ui-api-migration.md).
+For the 0.6.0 to 0.7.0 changes, see [UI 0.7.0 migration](./ui-api-migration.md).
 # Contribute
 
 Start in the directory for the Rust wrapper, native configuration or documentation you are changing. The sections below locate generated code, list checks for each layer and describe how to update documentation examples.
@@ -166,7 +166,7 @@ python3 scripts/install-skills.py --dest ~/.agents/skills
 python3 scripts/install-skills.py --dest ../application/.agents/skills --skill rs-lvgl-ui
 ```
 
-The installer refuses to overwrite an existing skill folder. CI validates the packaged skills with `scripts/check-skills.py`; see [AI development skills](https://github.com/umbrella22/rs_lvgl/blob/v0.6.0/docs/ai-skills.md) for discovery and maintenance details.
+The installer refuses to overwrite an existing skill folder. CI validates the packaged skills with `scripts/check-skills.py`; see [AI development skills](https://github.com/umbrella22/rs_lvgl/blob/v0.7.0/docs/ai-skills.md) for discovery and maintenance details.
 
 ## Host testing and target limits
 
@@ -174,6 +174,6 @@ Host builds and tests compile and run the vendored LVGL on the development machi
 
 ## Composition and native checks
 
-The [composition and forms guide](./composition.md) covers the 0.6.0 lazy children, semantic events, typed construction, slots and bindings. Validate the pinned library with `npm run check-development-ui -- --source ./source`; use `--source ../lv_binding_rust` for a local library checkout. Normal builds and browser runtimes use the pinned `source/`.
+The [composition and forms guide](./composition.md) covers the 0.7.0 lazy children, semantic events, typed construction, slots and bindings. Validate the pinned library with `npm run check-development-ui -- --source ./source`; use `--source ../lv_binding_rust` for a local library checkout. Normal builds and browser runtimes use the pinned `source/`.
 
 The sys build publishes `DEP_LVGL_LAYOUTS` from effective target macros, and handwritten wrappers follow Flex/Grid availability independently. Run `python3 scripts/check-layout-config.py --locked` from the library root for the four-configuration consumer matrix. The declarative UI requires its supported layouts.

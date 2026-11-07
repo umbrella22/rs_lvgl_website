@@ -6,6 +6,8 @@ import { wasmRoot, verifyWasm } from "./wasm-assets.mjs";
 import { repositoryRoot, sha256, encodePng } from "./playground-native.mjs";
 
 const manifest = await verifyWasm();
+const pages = JSON.parse(await fs.readFile(path.join(repositoryRoot, "wasm/sources.json"), "utf8"));
+assert.equal(pages.length, 11, "0.7.0 includes the control and chart depth pages");
 const { default: createStudio } = await import(pathToFileURL(path.join(wasmRoot, "studio.mjs")));
 const wasmBinary = await fs.readFile(path.join(wasmRoot, "studio.wasm"));
 const directory = path.join(repositoryRoot, "target/rspress-wasm/acceptance");
@@ -32,14 +34,14 @@ for (let pass = 1; pass <= passes; pass++) {
   assert.ok(new Set(pixels()).size > 100, "real pixels, not an empty framebuffer");
   passed("initialize and render real pixels");
   const hashes = [];
-  for (let index = 0; index < 9; index++) {
+  for (let index = 0; index < pages.length; index++) {
     page(index);
     const rgba = pixels();
     hashes.push(sha256(rgba));
     if (pass === 1) await fs.writeFile(path.join(directory, `page-${index}.png`), encodePng(1280, 860, rgba));
   }
-  assert.equal(new Set(hashes).size, 9);
-  passed("all nine shared Rust categories render distinct screens");
+  assert.equal(new Set(hashes).size, pages.length);
+  passed(`all ${pages.length} shared Rust categories render distinct screens`);
   page(0);
   press(1121, 352, true);
   press(1180, 352, true);
@@ -77,7 +79,7 @@ for (let pass = 1; pass <= passes; pass++) {
   passed("theme updates native rendering");
   assert.equal(native._studio_pointer(-1, 0, 1), -1);
   assert.equal(native._studio_pointer(1280, 0, 1), -1);
-  assert.equal(native._studio_command(0, 9), -1);
+  assert.equal(native._studio_command(0, pages.length), -1);
   assert.equal(native._studio_key(0xd800, 1), -1);
   assert.equal(native._studio_frame(1001), -1);
   advance();

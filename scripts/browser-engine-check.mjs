@@ -68,7 +68,7 @@ for (let pass = 1; pass <= passes; pass++) {
   const start = await instance(screen(placement.replace('align_content(FlexAlign::Center)', 'align_content(FlexAlign::Start)')));
   assert.notEqual(sha256(pixels(centered)), sha256(pixels(start)), "independent line alignment changes native pixels");
   centered._studio_destroy(); start._studio_destroy();
-  passed("0.6.0 container, progress bar, plain style and independent alignment render");
+  passed("0.7.0 container, progress bar, plain style and independent alignment render");
   const cadence = [];
   for (const hz of [60, 120]) {
     const animation = await instance(animatedPreviewSource);

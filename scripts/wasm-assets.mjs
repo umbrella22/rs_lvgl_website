@@ -50,5 +50,9 @@ export async function studioSources() {
     return { file: pagesFile, line: pageText.slice(0, start).split("\n").length, source: pageText.slice(start, next < 0 ? undefined : next).trim() };
   });
   sources.push({ file: nativeFile, line: 1, source: await fs.readFile(sourceInputPath(nativeFile), "utf8") });
+  for (const module of ["depth", "charts"]) {
+    const file = `rs_lvgl_ui/examples/studio/${module}.rs`;
+    sources.push({ file, line: 1, source: await fs.readFile(sourceInputPath(file), "utf8") });
+  }
   return sources;
 }

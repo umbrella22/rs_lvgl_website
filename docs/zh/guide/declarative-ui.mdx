@@ -9,12 +9,12 @@ import { NativeExample } from '../../../components/NativeExample';
 import { GuideLinks } from '../../../components/GuideLinks';
 
 
-从 0.5.0 升级到 0.6.0 的修改见 [UI 0.6.0 迁移](./ui-api-migration.md)。
+从 0.6.0 升级到 0.7.0 的修改见 [UI 0.7.0 迁移](./ui-api-migration.md)。
 # 排列控件
 
 一个设置页通常由标题、内容和操作按钮组成。`rs_lvgl_ui` 用普通 Rust 函数描述这些控件，再用 `column`、`row` 或 `grid` 把它们放在一起。LVGL 负责布局和绘制。
 
-0.6.0 的条件组合、语义回调、插槽和 typed 绑定见[组合与受控表单](./composition.md)。
+0.7.0 的条件组合、语义回调、插槽和 typed 绑定见[组合与受控表单](./composition.md)。
 
 ## 从一列开始
 
@@ -24,7 +24,7 @@ import { GuideLinks } from '../../../components/GuideLinks';
 
 把 `gap(16)` 改成 `gap(24)`，点击**运行**，观察控件之间的距离。也可以交换标题和说明在数组中的位置，再运行一次。
 
-本文使用 0.6.0 API。通过 `use rs_lvgl_ui::prelude::*` 导入常用函数和类型。构造函数返回 `View<M>` 描述，创建描述时还不会创建原生控件。
+本文使用 0.7.0 API。通过 `use rs_lvgl_ui::prelude::*` 导入常用函数和类型。构造函数返回 `View<M>` 描述，创建描述时还不会创建原生控件。
 
 `M` 是泛型参数，作用与常见的 `T` 相同，名字可以自定。`View<NotificationSettingsAction>` 表示这棵视图会产生通知设置组件的操作，例如切换开关或重置。状态字段保存在组件结构体中，处理逻辑写在 `update` 方法中；操作枚举只描述输入。没有操作的视图可以使用 `View<()>`。
 
